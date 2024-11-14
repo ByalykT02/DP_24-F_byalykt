@@ -2,8 +2,8 @@ import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
-import Header from "~/components/header";
-import Footer from "~/components/footer";
+import Header from "~/components/common/header";
+import Footer from "~/components/common/footer";
 
 export const metadata: Metadata = {
   title: "GalleryGlobe",

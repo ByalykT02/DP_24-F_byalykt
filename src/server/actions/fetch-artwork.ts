@@ -31,7 +31,7 @@ const FALLBACK_DATA = {
     {
       title: "The Starry Night",
       contentId: 1,
-      artistContentId: 227598,
+      artistContentId: 207187,
       artistName: "Vincent van Gogh",
       completitionYear: 1889,
       yearAsString: "1889",
@@ -80,7 +80,10 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 async function getRandomArtist(): Promise<Artist> {
   try {
     const artists = await fetchApi<Artist[]>('/app/api/popularartists?json=1');
-    return artists[Math.floor(Math.random() * artists.length)];
+    const artist = artists[Math.floor(Math.random() * artists.length)] as Artist;
+    console.log(`Artist fetched - ${artist.url}`)
+
+    return artist;
   } catch (error) {
     console.error('Error fetching artist:', error);
     return FALLBACK_DATA.artist;
@@ -109,6 +112,6 @@ export async function fetchArtworks(): Promise<Artwork[]> {
       .map(processArtwork);
   } catch (error) {
     console.error('Error fetching artworks:', error);
-    return FALLBACK_DATA.artworks;
+    return FALLBACK_DATA.artworks
   }
 }

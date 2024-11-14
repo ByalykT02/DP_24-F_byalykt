@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Input } from "~/components/ui/input";
-import { Button } from "./ui/button";
 import { Search, Menu } from "lucide-react";
+import { Button } from "../ui/button";
 
 export default function Header() {
   return (
