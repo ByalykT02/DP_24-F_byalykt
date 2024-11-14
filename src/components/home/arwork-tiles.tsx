@@ -15,14 +15,14 @@ export default function ArtworkTiles({ artworks}: ArtworkTilesProps){
       </h2>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {artworks.map((artwork, index) => (
-          <Card key={artwork.contentId} className="group overflow-hidden">
+          <Card key={artwork.contentId} className="group overflow-hidden hover:scale-105 transition-transform">
             <div className="relative aspect-[3/4]">
               <Image
                 src={artwork.image}
                 alt={artwork.title}
                 fill
                 loading={index < 3 ? "eager" : "lazy"}
-                className="object-cover transition-transform group-hover:scale-105"
+                className="object-cover"
                 sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                 quality={65}
               />

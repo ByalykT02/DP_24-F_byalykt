@@ -18,9 +18,6 @@ export default function Header() {
           <Link href="/artists" className="text-sm font-medium hover:text-primary">
             Artists
           </Link>
-          <Link href="/exhibitions" className="text-sm font-medium hover:text-primary">
-            Exhibitions
-          </Link>
           <Link href="/about" className="text-sm font-medium hover:text-primary">
             About
           </Link>
