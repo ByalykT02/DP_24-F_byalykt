@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { fetchArtworks } from "~/server/actions/fetch-artwork";
+
 import { Artwork } from "~/lib/types/artwork";
 import { Loading } from "~/components/ui/loading";
 import ArtCategories from "~/components/home/art-categories";
 import Hero from "~/components/home/hero";
 import ArtworkTiles from "~/components/home/arwork-tiles";
+import { fetchArtworks } from "~/server/actions/fetch-artworks-home";
 
 const MainPage = () => {
   const [results, setResults] = useState<Artwork[]>([]);

@@ -9,3 +9,53 @@ export interface Artwork {
   image: string,
   height: number
 }
+
+export interface ArtworkDetailed {
+  // Artist Information
+  artistName: string;
+  artistUrl: string;
+  artistContentId: number;
+
+  // Artwork Identification
+  contentId: number;
+  title: string;
+  url: string | null;
+
+  // Creation Details
+  completitionYear: number | null;
+  yearAsString: string | null;
+
+  // Categorization
+  genre: string | null;
+  style: string | null;
+  tags: string | null;
+  dictionaries: number[] | null[];
+
+  // Physical Characteristics
+  sizeX: number | null;
+  sizeY: number | null;
+  diameter: number | null;
+  width: number | null;
+  height: number | null;
+  
+  // Materials and Techniques
+  material: string | null;
+  technique: string | null;
+
+  // Location and Series
+  location: string | null;
+  period: string | null;
+  serie: string | null;
+  galleryName: string | null;
+
+  // Image
+  image: string | null;
+
+  // Commercial Information
+  auction: string | null;
+  yearOfTrade: number | null;
+  lastPrice: number | null;
+
+  // Optional Fields
+  description: string | null;
+}
