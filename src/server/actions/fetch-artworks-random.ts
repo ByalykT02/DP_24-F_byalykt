@@ -4,7 +4,7 @@ import { Artwork } from "~/lib/types/artwork";
 
 // Constants
 const API_BASE_URL = "https://www.wikiart.org/en";
-const MAX_ARTWORKS = 9;
+const MAX_ARTWORKS = 21;
 const REQUEST_CONFIG = {
   headers: {
     Accept: "application/json",

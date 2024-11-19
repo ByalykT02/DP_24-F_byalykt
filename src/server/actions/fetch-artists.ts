@@ -1,11 +1,9 @@
 "use server";
 
 import { Artist } from "~/lib/types/artist";
-import { Artwork } from "~/lib/types/artwork";
 
 // Constants
 const API_BASE_URL = "https://www.wikiart.org/en";
-const MAX_ARTWORKS = 9;
 const REQUEST_CONFIG = {
   headers: {
     Accept: "application/json",
@@ -15,8 +13,8 @@ const REQUEST_CONFIG = {
 } as const;
 
 // Fallback data
-const FALLBACK_DATA = {
-  artist: {
+const FALLBACK_ARTISTS: Artist[] = [
+  {
     contentId: 227598,
     artistName: "Alphonse Mucha",
     url: "alphonse-mucha",
@@ -26,21 +24,8 @@ const FALLBACK_DATA = {
     image: "https://uploads6.wikiart.org/images/alphonse-mucha.jpg!Portrait.jpg",
     wikipediaUrl: "http://en.wikipedia.org/wiki/Alphonse_Mucha",
     dictonaries: [318, 7741],
-  } as const,
-  artworks: [
-    {
-      title: "The Starry Night",
-      contentId: 1,
-      artistContentId: 207187,
-      artistName: "Vincent van Gogh",
-      completitionYear: 1889,
-      yearAsString: "1889",
-      width: 921,
-      height: 737,
-      image: "https://uploads7.wikiart.org/images/vincent-van-gogh/the-starry-night-1889.jpg",
-    },
-  ] as const,
-};
+  },
+];
 
 // Utility function to shuffle array
 function shuffleArray<T>(array: T[]): T[] {
@@ -51,7 +36,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 // Enhanced fetch with automatic timeout and error handling
-export async function fetchApi<T>(endpoint: string): Promise<T> {
+async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -68,6 +53,9 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
     const data = await response.json();
     return data as T;
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout for ${endpoint}`);
+    }
     throw new Error(
       `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -76,42 +64,26 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
   }
 }
 
-// Fetch random artist
-async function getRandomArtist(): Promise<Artist> {
-  try {
-    const artists = await fetchApi<Artist[]>('/app/api/popularartists?json=1');
-    const artist = artists[Math.floor(Math.random() * artists.length)] as Artist;
-    console.log(`Artist fetched - ${artist.url}`)
-
-    return artist;
-  } catch (error) {
-    console.error('Error fetching artist:', error);
-    return FALLBACK_DATA.artist;
-  }
-}
-
-// Process artwork image URLs
-function processArtwork(artwork: Artwork): Artwork {
+// Process artist image URLs
+function processArtist(artist: Artist): Artist {
   return {
-    ...artwork,
-    image: artwork.image.replace('!Large.jpg', ''),
+    ...artist,
+    image: artist.image.replace('!Portrait.jpg', ''),
   };
 }
 
 // Main export
-export async function fetchArtworks(): Promise<Artwork[]> {
+export async function fetchPopularArtists(): Promise<Artist[]> {
   try {
-    const artist = await getRandomArtist();
-    
-    const artworks = await fetchApi<Artwork[]>(
-      `/App/Painting/PaintingsByArtist?artistUrl=${artist.url}&json=2`
+    const artists = await fetchApi<Artist[]>(
+      '/app/api/popularartists?json=1'
     );
 
-    return shuffleArray(artworks)
-      .slice(0, MAX_ARTWORKS)
-      .map(processArtwork);
+    // Process and shuffle the artists
+    return shuffleArray(artists)
+      .map(processArtist);
   } catch (error) {
-    console.error('Error fetching artworks:', error);
-    return FALLBACK_DATA.artworks
+    console.error('Error fetching popular artists:', error);
+    return FALLBACK_ARTISTS;
   }
 }

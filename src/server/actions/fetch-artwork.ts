@@ -85,8 +85,8 @@ function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
   
   return {
     ...artwork,
-    // image: artwork.image?.replace(/!(Large|Portrait|Square|PinterestSmall)\.jpg$/, '') || FALLBACK_ARTWORK.image
-    image: artwork.image || FALLBACK_ARTWORK.image
+    image: artwork.image?.replace(/!(Large|Portrait|Square|PinterestSmall)\.jpg$/, '') || FALLBACK_ARTWORK.image
+    // image: artwork.image || FALLBACK_ARTWORK.image
 
   };
 }
