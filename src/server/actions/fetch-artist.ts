@@ -89,22 +89,15 @@ function processArtworks(artworks: Artwork[]): Artwork[] {
   }));
 }
 
-export async function fetchArtistDetails(url: string): Promise<{
-  artist: ArtistDetailed;
-  artworks: Artwork[];
-}> {
+export async function fetchArtistDetails(url: string) {
   try {
-    // Get artist details using the correct endpoint
-    const artist = await fetchApi<ArtistDetailed>(
-      `/${url}?json=2`
-    );
-
-    // Get artworks, using optional chaining and providing a default empty array
-    const artworks = artist?.paintings || [];
+    const artist = await fetchApi<ArtistDetailed>(`/${url}?json=2`);
 
     if (!artist) {
-      throw new Error("Failed to fetch artist data");
+      throw new Error("Artist data not found");
     }
+    
+    const artworks = artist.paintings ?? [];
 
     return {
       artist: processArtist(artist),
