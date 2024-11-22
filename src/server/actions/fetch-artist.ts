@@ -85,7 +85,7 @@ function processArtist(artist: ArtistDetailed): ArtistDetailed {
 function processArtworks(artworks: Artwork[]): Artwork[] {
   return artworks.map(artwork => ({
     ...artwork,
-    image: artwork.image.replace(/!.*\.jpg/, '.jpg'),
+    image: artwork.image.replace('!Large.jpg', ''),
   }));
 }
 
@@ -97,11 +97,13 @@ export async function fetchArtistDetails(url: string) {
       throw new Error("Artist data not found");
     }
     
-    const artworks = artist.paintings ?? [];
-
+    const artworks = await fetchApi<Artwork[]>(`/App/Painting/PaintingsByArtist?artistUrl=${url}&json=2`);
+    
     return {
       artist: processArtist(artist),
-      artworks: processArtworks(artworks.slice(0, MAX_ARTWORKS)),
+      // artworks: processArtworks(artworks.slice(0, MAX_ARTWORKS)),      artworks: processArtworks(artworks.slice(0, MAX_ARTWORKS)),
+      artworks: processArtworks(artworks),
+
     };
   } catch (error) {
     console.error('Error fetching artist details:', error);

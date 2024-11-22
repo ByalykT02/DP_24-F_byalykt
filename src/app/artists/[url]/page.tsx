@@ -40,43 +40,43 @@ export default function ArtistPage({ params }: ArtistPageProps) {
 
   const router = useRouter();
 
-  const parseBiography = (text: string) => {
-    // Split the text into parts based on URL tags
-    const parts = text.split(/\[url href=|\/url\]|\[i\]|\[\/i\]/g);
-    
-    return parts.map((part, index) => {
-      if (part.includes(']')) {
-        // Handle URL parts
-        const [url, label] = part.split(']');
-        return (
-          <a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            {label?.slice(0, -1)}
-          </a>
-        );
-      }
-      // Return regular text
-      return <span key={index}>{part}</span>;
-    });
-  };
-  
+  const parseBiography = useCallback((text: string) => {
+    if (!text) return null;
+
+    return text
+      .split(/\[url href=|\/url\]|\[i\]|\[\/i\]/g)
+      .map((part, index) => {
+        if (part.includes("]")) {
+          const [url, label] = part.split("]");
+          return (
+            <a
+              key={index}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {label?.trim().slice(0, label.length - 1) }
+            </a>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      });
+  }, []);
+
   const loadArtistDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await fetchArtistDetails(params.url);
+      console.log(data);
       setArtistData(data);
     } catch (error) {
       console.error("Error loading artist:", error);
       setError(
-        error instanceof Error 
-          ? error.message 
-          : "Failed to load artist details. Please try again later."
+        error instanceof Error
+          ? error.message
+          : "Failed to load artist details",
       );
     } finally {
       setIsLoading(false);
@@ -114,141 +114,183 @@ export default function ArtistPage({ params }: ArtistPageProps) {
   const { artist, artworks } = artistData;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            onClick={() => router.back()}
-            variant="ghost"
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
-        </div>
-
-        <div className="grid gap-12 lg:grid-cols-2">
-          {/* Artist Image Section */}
-          <div>
-            <Card className="overflow-hidden">
-              <div className="relative aspect-square">
-                <Image
-                  src={artist.image}
-                  alt={artist.artistName}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            </Card>
-          </div>
-
-          {/* Details Section */}
-          <ScrollArea className="h-[calc(100vh-8rem)]">
-            <div className="space-y-8 pr-4">
-              <div>
-                <h1 className="text-4xl font-bold leading-tight text-gray-900">
-                  {artist.artistName}
-                </h1>
-                {artist.originalArtistName && (
-                  <p className="mt-2 text-xl text-gray-600">
-                    Originally: {artist.originalArtistName}
-                  </p>
-                )}
-                
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {artist.birthDayAsString} - {artist.deathDayAsString}
-                  </Badge>
-                  {artist.gender && (
-                    <Badge variant="secondary" className="gap-1">
-                      <User className="h-3 w-3" />
-                      {artist.gender.charAt(0).toUpperCase() + artist.gender.slice(1)}
-                    </Badge>
-                  )}
-                  {artist.wikipediaUrl && (
-                    <a
-                      href={artist.wikipediaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Badge variant="outline" className="gap-1">
-                        <LinkIcon className="h-3 w-3" />
-                        Wikipedia
-                      </Badge>
-                    </a>
-                  )}
-                </div>
-              </div>
-          
-              {/* Biography */}
-              {artist.biography && (
-                <div className="rounded-lg bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-                    <BookOpen className="h-5 w-5" />
-                    Biography
-                  </h2>
-                  <p className="whitespace-pre-line text-gray-600">{parseBiography(artist.biography)}</p>
-                </div>
-              )}
-          
-              {/* Periods of Work */}
-              {artist.periodsOfWork && (
-                <div className="rounded-lg bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-                    <Clock className="h-5 w-5" />
-                    Periods of Work
-                  </h2>
-                  <div className="space-y-2">
-                    {artist.periodsOfWork.split('\r\n').map((period) => (
-                      <Badge key={period} variant="secondary">
-                        {period}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-          
-              {/* Series */}
-              {artist.series && (
-                <div className="rounded-lg bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-                    <Grid className="h-5 w-5" />
-                    Series
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {artist.series.split('\r\n').map((series) => (
-                      <Badge key={series} variant="outline">
-                        {series}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-          
-              <Separator />
-          
-              {/* Artworks Grid */}
-              {artworks.length > 0 && (
-                <div>
-                  <h2 className="mb-6 flex items-center gap-2 text-2xl font-semibold">
-                    <Grid className="h-5 w-5" />
-                    Featured Works
-                  </h2>
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {/* ... (previous artworks grid code) */}
-                  </div>
-                </div>
-              )}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        {/* Header */}
+        <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+          <div className="container mx-auto max-w-7xl px-4">
+            <div className="flex h-16 items-center justify-between">
+              <Button
+                onClick={() => router.back()}
+                variant="ghost"
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button variant="outline" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
             </div>
-          </ScrollArea>
-        </div>
+          </div>
+        </header>
+  
+        {/* Main Content */}
+        <main className="container mx-auto max-w-7xl px-4 py-8">
+          {/* Artist Info Section */}
+          <div className="mb-12">
+            <div className="grid gap-8 md:grid-cols-[300px,1fr] lg:grid-cols-[400px,1fr]">
+              {/* Artist Image */}
+              <div className="space-y-6">
+                <Card className="overflow-hidden">
+                  <div className="relative aspect-[3/4]">
+                    <Image
+                      src={artist.image}
+                      alt={artist.artistName}
+                      fill
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+                </Card>
+                
+                {/* Quick Info */}
+                <Card className="p-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-sm font-medium text-muted-foreground">Birth - Death</h2>
+                      <p className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {artist.birthDayAsString} - {artist.deathDayAsString}
+                      </p>
+                    </div>
+                    
+                    {artist.gender && (
+                      <div>
+                        <h2 className="text-sm font-medium text-muted-foreground">Gender</h2>
+                        <p className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          {artist.gender.charAt(0).toUpperCase() + artist.gender.slice(1)}
+                        </p>
+                      </div>
+                    )}
+  
+                    {artist.wikipediaUrl && (
+                      <div>
+                        <h2 className="text-sm font-medium text-muted-foreground">Links</h2>
+                        <a
+                          href={artist.wikipediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <LinkIcon className="h-4 w-4" />
+                          Wikipedia
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+  
+              {/* Artist Details */}
+              <div className="space-y-8">
+                <div>
+                  <h1 className="text-4xl font-bold leading-tight text-gray-900">
+                    {artist.artistName}
+                  </h1>
+                  {artist.originalArtistName && (
+                    <p className="mt-2 text-xl text-gray-600">
+                      Originally: {artist.originalArtistName}
+                    </p>
+                  )}
+                </div>
+  
+                {/* Biography */}
+                {artist.biography && (
+                  <Card className="p-6">
+                    <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+                      <BookOpen className="h-5 w-5" />
+                      Biography
+                    </h2>
+                    <div className="prose max-w-none text-gray-600">
+                      {parseBiography(artist.biography)}
+                    </div>
+                  </Card>
+                )}
+  
+                {/* Career Details */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {/* Periods of Work */}
+                  {artist.periodsOfWork && (
+                    <Card className="p-6">
+                      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+                        <Clock className="h-5 w-5" />
+                        Periods of Work
+                      </h2>
+                      <div className="flex flex-wrap gap-2">
+                        {artist.periodsOfWork.split("\r\n").map((period) => (
+                          <Badge key={period} variant="secondary">
+                            {period}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+  
+                  {/* Series */}
+                  {artist.series && (
+                    <Card className="p-6">
+                      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+                        <Grid className="h-5 w-5" />
+                        Series
+                      </h2>
+                      <div className="flex flex-wrap gap-2">
+                        {artist.series.split("\r\n").map((series) => (
+                          <Badge key={series} variant="outline">
+                            {series}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          {/* Artworks Section */}
+          {artworks.length > 0 && (
+            <section>
+              <h2 className="mb-6 text-2xl font-semibold">Featured Works</h2>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {artworks.map((artwork) => (
+                  <Link
+                    key={artwork.contentId}
+                    href={`/artworks/${artwork.contentId}`}
+                    className="transition-transform hover:scale-[1.02]"
+                  >
+                    <Card className="overflow-hidden">
+                      <div className="relative aspect-[3/4]">
+                        <Image
+                          src={artwork.image}
+                          alt={artwork.title}
+                          fill
+                          className="object-cover"
+                          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                        />
+                      </div>
+                      <CardContent className="p-4">
+                        <h3 className="line-clamp-1 font-semibold">{artwork.title}</h3>
+                        <p className="text-sm text-muted-foreground">{artwork.yearAsString}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </main>
       </div>
-    </div>
-  );
-}
+    );
+  }
