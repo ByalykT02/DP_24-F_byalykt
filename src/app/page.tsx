@@ -14,9 +14,7 @@ const MainPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const loadingRef = useRef(false);
 
-  // Load artworks
   const loadArtworks = useCallback(async () => {
-    // Prevent concurrent loads
     if (loadingRef.current) return;
     
     try {
@@ -32,7 +30,6 @@ const MainPage = () => {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
     void loadArtworks();
   }, [loadArtworks]);
