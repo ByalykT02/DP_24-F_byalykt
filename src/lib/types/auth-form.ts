@@ -13,6 +13,7 @@ export interface AuthFormProps{
   schema: z.ZodType<any>;
   fields: FormField[];
   submitLabel: string;
+  disabled: boolean;
   onSubmit: (values: any) => void;
   alternativeAction: React.ReactNode
 }

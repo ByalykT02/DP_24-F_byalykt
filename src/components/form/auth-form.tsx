@@ -26,6 +26,7 @@ export const AuthForm = ({
   title,
   description,
   schema,
+  disabled,
   fields,
   submitLabel,
   onSubmit,
@@ -62,6 +63,7 @@ export const AuthForm = ({
                         <FormLabel>{field.label}</FormLabel>
                         <FormControl>
                           <Input
+                            disabled={disabled}
                             {...fieldProps}
                             type={field.type}
                             placeholder={field.placeholder}

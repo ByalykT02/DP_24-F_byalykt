@@ -1,12 +1,16 @@
 "use client";
 
+import { login } from "actions/login";
+import { useTransition } from "react";
 import { LoginSchema } from "schemas";
+import * as z from "zod";
 
 import { RegisterButton } from "~/components/auth/register-button";
 import { AuthForm } from "~/components/form/auth-form";
 import { Button } from "~/components/ui/button";
 
 const LoginPage = () => {
+  const [isPending, startTransition] = useTransition();
   const fields = [
     {
       name: "email",
@@ -22,8 +26,10 @@ const LoginPage = () => {
     },
   ];
 
-  const onSubmit = (values: any) => {
-    console.log(values);
+  const onSubmit = (values: z.infer<typeof LoginSchema>) => {
+    startTransition(() => {
+      login(values);
+    });
   };
 
   return (
@@ -34,9 +40,14 @@ const LoginPage = () => {
       fields={fields}
       submitLabel="Sign In"
       onSubmit={onSubmit}
+      disabled={isPending}
       alternativeAction={
         <RegisterButton>
-          <Button variant="outline" className="mt-6 w-full">
+          <Button
+            variant="outline"
+            disabled={isPending}
+            className="mt-6 w-full"
+          >
             Create an account
           </Button>
         </RegisterButton>
