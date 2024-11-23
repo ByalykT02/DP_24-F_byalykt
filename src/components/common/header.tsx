@@ -1,7 +1,10 @@
+"use client"
+
 import Link from "next/link";
 import { Input } from "~/components/ui/input";
 import { Search, Menu } from "lucide-react";
 import { Button } from "../ui/button";
+import { LoginButton } from "../auth/login-button";
 
 export default function Header() {
   return (
@@ -10,30 +13,41 @@ export default function Header() {
         <Link href="/" className="text-xl font-bold">
           GalleryGlobe
         </Link>
-        
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/artworks" className="text-sm font-medium hover:text-primary">
+
+        <nav className="hidden items-center gap-6 md:flex">
+          <Link
+            href="/artworks"
+            className="text-sm font-medium hover:text-primary"
+          >
             Artworks
           </Link>
-          <Link href="/artists" className="text-sm font-medium hover:text-primary">
+          <Link
+            href="/artists"
+            className="text-sm font-medium hover:text-primary"
+          >
             Artists
           </Link>
-          <Link href="/about" className="text-sm font-medium hover:text-primary">
+          <Link
+            href="/about"
+            className="text-sm font-medium hover:text-primary"
+          >
             About
           </Link>
         </nav>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex relative">
+          <div className="relative hidden md:flex">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search art & artists..."
-              className="pl-8 w-[200px] lg:w-[300px]"
+              className="w-[200px] pl-8 lg:w-[300px]"
             />
           </div>
+          <LoginButton>
           <Button variant="outline" size="sm">
             Sign In
           </Button>
+        </LoginButton>
           <Button className="md:hidden" variant="ghost" size="icon">
             <Menu className="h-5 w-5" />
           </Button>
