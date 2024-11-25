@@ -12,20 +12,10 @@ interface HeroProps {
 export default function Hero({ artworks }: HeroProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [heroImagesLoaded, setHeroImagesLoaded] = useState(0);
-  const [greeting, setGreeting] = useState('')
 
   const handleHeroImageLoad = useCallback(() => {
     setHeroImagesLoaded((prev) => prev + 1);
   }, []);
-  useEffect(() => {
-    const fetchGreeting = async () => {
-      const response = await fetch("/api/greeting")
-      const data = await response.json()
-      setGreeting(data)
-    }
-    void fetchGreeting()
-  }, [])
-
   useEffect(() => {
     if (artworks.length === 0) return;
 
@@ -66,7 +56,7 @@ export default function Hero({ artworks }: HeroProps) {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl">
             <h1 className="mb-6 text-5xl font-bold text-white">
-              {greeting}
+              GalleryGlobe
             </h1>
             <p className="mb-8 text-xl text-gray-200">
               Explore our curated collection of masterpieces

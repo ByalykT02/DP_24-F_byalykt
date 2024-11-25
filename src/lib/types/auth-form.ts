@@ -7,7 +7,7 @@ export interface FormField {
   placeholder: string;
 }
 
-export interface AuthFormProps{
+export interface AuthFormProps {
   title: string;
   description: string;
   schema: z.ZodType<any>;
@@ -15,5 +15,11 @@ export interface AuthFormProps{
   submitLabel: string;
   disabled: boolean;
   onSubmit: (values: any) => void;
-  alternativeAction: React.ReactNode
+  alternativeAction: React.ReactNode;
+  success: string | undefined;
+  error: string | undefined;
 }
+
+export type AuthResponse = 
+  | { success: string; error?: never }
+  | { error: string; success?: never };

@@ -8,6 +8,10 @@ import {
   text,
   timestamp,
   varchar,
+  boolean,
+  date,
+  decimal,
+  json,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
@@ -18,37 +22,6 @@ import { type AdapterAccount } from "next-auth/adapters";
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = pgTableCreator((name) => `${name}`);
-
-export const greeting = createTable("greeting", {
-  id: serial("id").primaryKey(),
-  greetingText: varchar("greetingText"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-    () => new Date(),
-  ),
-});
-export const posts = createTable(
-  "post",
-  {
-    id: serial("id").primaryKey(),
-    name: varchar("name", { length: 256 }),
-    createdById: varchar("created_by", { length: 255 })
-      .notNull()
-      .references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-      () => new Date(),
-    ),
-  },
-  (example) => ({
-    createdByIdIdx: index("created_by_idx").on(example.createdById),
-    nameIndex: index("name_idx").on(example.name),
-  }),
-);
 
 export const users = createTable("user", {
   id: varchar("id", { length: 255 })
@@ -62,6 +35,7 @@ export const users = createTable("user", {
     withTimezone: true,
   }).default(sql`CURRENT_TIMESTAMP`),
   image: varchar("image", { length: 255 }),
+  password: varchar("password", {length: 255})
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -138,3 +112,139 @@ export const verificationTokens = createTable(
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
   }),
 );
+
+export const artists = createTable("artist", {
+  contentId: integer("content_id").primaryKey(),
+  artistName: varchar("artist_name", { length: 255 }).notNull(),
+  url: varchar("url", { length: 255 }).notNull(),
+  lastNameFirst: varchar("last_name_first", { length: 255 }).notNull(),
+  birthDay: date("birth_day"),
+  deathDay: date("death_day"),
+  birthDayAsString: varchar("birth_day_string", { length: 100 }),
+  deathDayAsString: varchar("death_day_string", { length: 100 }),
+  originalArtistName: varchar("original_artist_name", { length: 255 }),
+  gender: varchar("gender", { length: 50 }),
+  biography: text("biography"),
+  story: text("story"),
+  activeYearsStart: varchar("active_years_start", { length: 50 }),
+  activeYearsCompletion: varchar("active_years_completion", { length: 50 }),
+  series: text("series"),
+  themes: text("themes"),
+  periodsOfWork: text("periods_of_work"),
+  image: varchar("image", { length: 1000 }),
+  wikipediaUrl: varchar("wikipedia_url", { length: 1000 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Artworks table
+export const artworks = createTable("artwork", {
+  contentId: integer("content_id").primaryKey(),
+  artistContentId: integer("artist_content_id")
+    .notNull()
+    .references(() => artists.contentId),
+  title: varchar("title", { length: 255 }).notNull(),
+  url: varchar("url", { length: 255 }),
+  completitionYear: integer("completion_year"),
+  yearAsString: varchar("year_as_string", { length: 50 }),
+  genre: varchar("genre", { length: 100 }),
+  style: varchar("style", { length: 100 }),
+  tags: json("tags").$type<string[]>(),
+  width: decimal("width", { precision: 10, scale: 2 }),
+  height: decimal("height", { precision: 10, scale: 2 }),
+  diameter: decimal("diameter", { precision: 10, scale: 2 }),
+  material: varchar("material", { length: 255 }),
+  technique: varchar("technique", { length: 255 }),
+  location: varchar("location", { length: 255 }),
+  period: varchar("period", { length: 100 }),
+  serie: varchar("serie", { length: 255 }),
+  galleryName: varchar("gallery_name", { length: 255 }),
+  image: varchar("image", { length: 1000 }),
+  auction: text("auction"),
+  yearOfTrade: integer("year_of_trade"),
+  lastPrice: decimal("last_price", { precision: 15, scale: 2 }),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// User Preferences and Collections
+export const userPreferences = createTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  preferredStyles: json("preferred_styles").$type<string[]>(),
+  preferredPeriods: json("preferred_periods").$type<string[]>(),
+  newsletterSubscription: boolean("newsletter_subscription").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// User Collections
+export const userCollections = createTable("user_collection", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Collection Items
+export const collectionItems = createTable("collection_item", {
+  id: serial("id").primaryKey(),
+  collectionId: integer("collection_id")
+    .notNull()
+    .references(() => userCollections.id),
+  artworkId: integer("artwork_id")
+    .notNull()
+    .references(() => artworks.contentId),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
+// User Interactions
+export const userInteractions = createTable("user_interaction", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  artworkId: integer("artwork_id")
+    .notNull()
+    .references(() => artworks.contentId),
+  rating: integer("rating"),
+  comment: text("comment"),
+  isFavorite: boolean("is_favorite").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Relations
+export const artistRelations = relations(artists, ({ many }) => ({
+  artworks: many(artworks),
+}));
+
+export const artworkRelations = relations(artworks, ({ one }) => ({
+  artist: one(artists, {
+    fields: [artworks.artistContentId],
+    references: [artists.contentId],
+  }),
+}));
+
+export const userCollectionRelations = relations(userCollections, ({ many }) => ({
+  items: many(collectionItems),
+}));
+
+export const collectionItemRelations = relations(collectionItems, ({ one }) => ({
+  collection: one(userCollections, {
+    fields: [collectionItems.collectionId],
+    references: [userCollections.id],
+  }),
+  artwork: one(artworks, {
+    fields: [collectionItems.artworkId],
+    references: [artworks.contentId],
+  }),
+}));

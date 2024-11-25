@@ -21,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import FormStatus from "./form-status";
 
 export const AuthForm = ({
   title,
@@ -29,6 +30,8 @@ export const AuthForm = ({
   disabled,
   fields,
   submitLabel,
+  success,
+  error,
   onSubmit,
   alternativeAction,
 }: AuthFormProps) => {
@@ -75,6 +78,7 @@ export const AuthForm = ({
                   />
                 ))}
               </div>
+              <FormStatus error={error} success={success} />
 
               <Button type="submit" className="w-full">
                 {submitLabel}
