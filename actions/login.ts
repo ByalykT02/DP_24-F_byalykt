@@ -4,10 +4,13 @@ import { AuthError } from "next-auth";
 import { DEFAULT_LOGIN_REDIRECT } from "routes";
 import { LoginSchema } from "schemas";
 import * as z from "zod";
+import { AuthResponse } from "~/lib/types/auth-form";
 
-export const login = async (values: z.infer<typeof LoginSchema>) => {
+export const login = async (
+  values: z.infer<typeof LoginSchema>
+): Promise<AuthResponse | undefined> => {
   const validatedFields = LoginSchema.safeParse(values);
-  if (validatedFields.error) {
+  if (!validatedFields.success) {
     return { error: "Invalid fields!" };
   }
 
@@ -17,8 +20,9 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
     await signIn("credentials", {
       email,
       password,
-      redirectTo: DEFAULT_LOGIN_REDIRECT,
+      redirect: false, // Changed to false to handle redirect manually
     });
+    return { success: "Logged in successfully!" };
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {

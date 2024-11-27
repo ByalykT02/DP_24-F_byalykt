@@ -4,17 +4,22 @@ import { users } from "../schema";
 import { eq } from "drizzle-orm";
 
 
-export async function getUserByEmail(userEmail: string) {
+export async function getUserByEmail(email: string) {
   try {
-    const result = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, userEmail))
-    return result[0]
-  } catch (e) {
-    console.error(e);
+    const user = await db.query.users.findFirst({
+      where: (model, { eq }) => eq(model.email, email),
+    });
+    return user;
+  } catch {
     return null;
   }
+}
+
+export async function getUserById(id: string) {
+  const user = await db.query.users.findFirst({
+    where: (model, { eq }) => eq(model.id, id),
+  });
+  return user;
 }
 
 

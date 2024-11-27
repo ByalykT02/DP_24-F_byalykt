@@ -6,9 +6,8 @@ import { AuthForm } from "~/components/form/auth-form";
 import { Button } from "~/components/ui/button";
 import { useState, useTransition } from "react";
 import { register } from "actions/register";
-import { RegisterButton } from "~/components/auth/register-button";
 import { AuthResponse } from "~/lib/types/auth-form";
-import { LoginButton } from "~/components/auth/login-button";
+import { LoginRouteButton } from "~/components/common/login-route-button";
 
 const RegistrationPage = () => {
   const [isPending, startTransition] = useTransition();
@@ -76,11 +75,11 @@ const RegistrationPage = () => {
       success={success}
       error={error}
       alternativeAction={
-        <LoginButton>
+        <LoginRouteButton>
           <Button variant="outline" className="mt-4 w-full">
             Sign In
           </Button>
-        </LoginButton>
+        </LoginRouteButton>
       }
     />
   );

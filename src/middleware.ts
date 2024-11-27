@@ -1,6 +1,5 @@
-import { auth } from "auth";
-
 import authConfig from "auth.config";
+import NextAuth from "next-auth";
 import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
@@ -8,9 +7,12 @@ import {
   publicRoutes,
 } from "routes";
 
-const MAX_REDIRECTS = 5;
-const compiledPublicRoutes = publicRoutes.map((route) => new RegExp(route));
+const compiledPublicRoutes = publicRoutes.map(route => new RegExp(route));
 const authRoutesSet = new Set(authRoutes);
+
+const MAX_REDIRECTS = 5;
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   try {
@@ -26,9 +28,7 @@ export default auth((req) => {
 
     const isLoggedIn = !!req.auth;
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-    const isPublicRoute = compiledPublicRoutes.some((route) =>
-      route.test(nextUrl.pathname),
-    );
+    const isPublicRoute = compiledPublicRoutes.some(route => route.test(nextUrl.pathname));
     const isAuthRoute = authRoutesSet.has(nextUrl.pathname);
 
     if (isApiAuthRoute) {

@@ -7,10 +7,11 @@ import * as z from "zod";
 import { RegisterButton } from "~/components/auth/register-button";
 import { AuthForm } from "~/components/form/auth-form";
 import { Button } from "~/components/ui/button";
-
-import { AuthResponse } from "~/lib/types/auth-form";
+import { useRouter } from "next/navigation";
+import { DEFAULT_LOGIN_REDIRECT } from "routes";
 
 const LoginPage = () => {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
@@ -31,21 +32,22 @@ const LoginPage = () => {
   ];
 
   const onSubmit = (values: z.infer<typeof LoginSchema>) => {
-    startTransition(() => {
-      login(values)
-        .then((data: AuthResponse) => {
-          if ("error" in data) {
-            setError(data.error);
-            setSuccess(undefined);
-          } else {
-            setSuccess(data.success);
-            setError(undefined);
-          }
-        })
-        .catch((err) => {
-          setError("Something went wrong");
-          setSuccess(undefined);
-        });
+    setError(undefined);
+    setSuccess(undefined);
+
+    startTransition(async () => {
+      try {
+        const result = await login(values);
+        if (result?.error) {
+          setError(result.error);
+        } else if (result?.success) {
+          setSuccess(result.success);
+          router.push(DEFAULT_LOGIN_REDIRECT);
+          router.refresh();
+        }
+      } catch (err) {
+        setError("Something went wrong");
+      }
     });
   };
 

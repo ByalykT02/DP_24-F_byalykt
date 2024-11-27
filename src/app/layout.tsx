@@ -4,6 +4,8 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import Header from "~/components/common/header";
 import Footer from "~/components/common/footer";
+import { SessionProvider } from "next-auth/react";
+import { auth } from "auth";
 
 export const metadata: Metadata = {
   title: "GalleryGlobe",
@@ -12,10 +14,14 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+
   return (
+  <SessionProvider session={session}>
+
     <html lang="en" className={`${GeistSans.variable}`}>
       <body>
           <Header />
@@ -23,5 +29,6 @@ export default function RootLayout({
           <Footer />
       </body>
     </html>
+  </SessionProvider>
   );
 }

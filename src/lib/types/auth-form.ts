@@ -20,6 +20,7 @@ export interface AuthFormProps {
   error: string | undefined;
 }
 
-export type AuthResponse = 
-  | { success: string; error?: never }
-  | { error: string; success?: never };
+export type AuthResponse = {
+  error?: string;
+  success?: string;
+}

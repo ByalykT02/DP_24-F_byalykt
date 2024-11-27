@@ -12,6 +12,7 @@ import {
   date,
   decimal,
   json,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
@@ -22,6 +23,9 @@ import { type AdapterAccount } from "next-auth/adapters";
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = pgTableCreator((name) => `${name}`);
+
+export const userRoleEnum = pgEnum("user_role", ["ADMIN", "USER"]);
+
 
 export const users = createTable("user", {
   id: varchar("id", { length: 255 })
@@ -35,7 +39,8 @@ export const users = createTable("user", {
     withTimezone: true,
   }).default(sql`CURRENT_TIMESTAMP`),
   image: varchar("image", { length: 255 }),
-  password: varchar("password", {length: 255})
+  password: varchar("password", {length: 255}),
+  role: userRoleEnum("role").notNull().default("USER"),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -248,3 +253,4 @@ export const collectionItemRelations = relations(collectionItems, ({ one }) => (
     references: [artworks.contentId],
   }),
 }));
+

@@ -1,12 +1,25 @@
-"use client"
+"use client";
 
 import Link from "next/link";
 import { Input } from "~/components/ui/input";
 import { Search, Menu } from "lucide-react";
 import { Button } from "../ui/button";
-import { LoginButton } from "../auth/login-button";
+import { LoginRouteButton } from "./login-route-button";
+import { UserMenu } from "./user-menu";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 
 export default function Header() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  
+    useEffect(() => {
+      if (status === 'authenticated' || status === 'unauthenticated') {
+        router.refresh();
+      }
+    }, [status, router]);
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -43,11 +56,21 @@ export default function Header() {
               className="w-[200px] pl-8 lg:w-[300px]"
             />
           </div>
-          <LoginButton>
-          <Button variant="outline" size="sm">
-            Sign In
-          </Button>
-        </LoginButton>
+          
+          {status === "loading" ? (
+            <Button variant="outline" size="sm" disabled>
+              Loading...
+            </Button>
+          ) : session?.user ? (
+            <UserMenu email={session.user.email} />
+          ) : (
+            <LoginRouteButton>
+              <Button variant="outline" size="sm">
+                Sign In
+              </Button>
+            </LoginRouteButton>
+          )}
+
           <Button className="md:hidden" variant="ghost" size="icon">
             <Menu className="h-5 w-5" />
           </Button>
