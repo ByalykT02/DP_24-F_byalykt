@@ -7,6 +7,8 @@ import { Badge } from "~/components/ui/badge";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Button } from "~/components/ui/button";
+import { addToHistory } from "~/server/actions/history";
+
 import {
   Share2,
   ArrowLeft,
@@ -21,6 +23,7 @@ import Image from "next/image";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { fetchArtwork } from "~/server/actions/fetch-artwork";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface ArtworkPageProps {
   params: {
@@ -35,26 +38,29 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const loadingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const historyAddedRef = useRef(false);
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
   });
 
+  const { data: session } = useSession();
+
+  
+  
   const router = useRouter();
 
-  // Calculate optimal image dimensions based on container size and aspect ratio
   const calculateImageDimensions = useCallback(
     (originalWidth: number, originalHeight: number) => {
       if (!containerRef.current) return { width: 0, height: 0 };
 
       const containerWidth = containerRef.current.offsetWidth;
-      const maxHeight = Math.min(window.innerHeight * 0.7, 800); // Max 70vh or 800px
+      const maxHeight = Math.min(window.innerHeight * 0.7, 800); 
       const aspectRatio = originalWidth / originalHeight;
 
       let width = containerWidth;
       let height = containerWidth / aspectRatio;
 
-      // If height exceeds maximum, scale down maintaining aspect ratio
       if (height > maxHeight) {
         height = maxHeight;
         width = maxHeight * aspectRatio;
@@ -65,31 +71,40 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     [],
   );
 
-  const loadArtwork = useCallback(async () => {
-    if (loadingRef.current) return;
-
-    try {
-      loadingRef.current = true;
-      setError(null);
-      const artworkData = await fetchArtwork(params.id);
-      setArtwork(artworkData);
-
-      // Initial dimensions calculation
-      if (artworkData.width && artworkData.height) {
-        const dimensions = calculateImageDimensions(
-          artworkData.width,
-          artworkData.height,
-        );
-        setImageDimensions(dimensions);
+  useEffect(() => {
+    const loadArtwork = async () => {
+      try {
+        setIsLoading(true);
+        const artworkData = await fetchArtwork(params.id);
+        setArtwork(artworkData);
+  
+        // Only add to history if not already added and user is logged in
+        if (session?.user?.id && !historyAddedRef.current) {
+          await addToHistory(session.user.id, artworkData);
+          historyAddedRef.current = true;
+        }
+  
+        if (artworkData.width && artworkData.height) {
+          const dimensions = calculateImageDimensions(
+            artworkData.width,
+            artworkData.height,
+          );
+          setImageDimensions(dimensions);
+        }
+      } catch (error) {
+        console.error("Error loading artwork:", error);
+        setError("Failed to load artwork. Please try again later.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading artwork:", error);
-      setError("Failed to load artwork. Please try again later.");
-    } finally {
-      setIsLoading(false);
-      loadingRef.current = false;
-    }
-  }, [params.id, calculateImageDimensions]);
+    };
+  
+    void loadArtwork();
+  }, [params.id, calculateImageDimensions, session?.user?.id]);
+  
+  useEffect(() => {
+      historyAddedRef.current = false;
+    }, [params.id]);
 
   // Recalculate dimensions on window resize
   useEffect(() => {
@@ -106,10 +121,6 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [artwork, calculateImageDimensions]);
-
-  useEffect(() => {
-    void loadArtwork();
-  }, [loadArtwork]);
 
   if (isLoading) {
     return (

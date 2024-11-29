@@ -199,6 +199,18 @@ export const userCollections = createTable("user_collection", {
   updatedAt: timestamp("updated_at"),
 });
 
+//History
+export const viewingHistory = createTable("viewing_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  artworkId: integer("artwork_id")
+    .notNull()
+    .references(() => artworks.contentId),
+  viewedAt: timestamp("viewed_at").defaultNow(),
+});
+
 // Collection Items
 export const collectionItems = createTable("collection_item", {
   id: serial("id").primaryKey(),
@@ -254,3 +266,13 @@ export const collectionItemRelations = relations(collectionItems, ({ one }) => (
   }),
 }));
 
+export const viewingHistoryRelations = relations(viewingHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [viewingHistory.userId],
+    references: [users.id],
+  }),
+  artwork: one(artworks, {
+    fields: [viewingHistory.artworkId],
+    references: [artworks.contentId],
+  }),
+}));

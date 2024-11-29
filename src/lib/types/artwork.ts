@@ -19,7 +19,7 @@ export interface ArtworkDetailed {
   // Artwork Identification
   contentId: number;
   title: string;
-  url: string | null;
+  url: string;
 
   // Creation Details
   completitionYear: number | null;
