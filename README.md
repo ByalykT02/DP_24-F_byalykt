@@ -15,8 +15,8 @@ A modern web application for exploring fine art collections, built with Next.js 
 ## Planned Features & Improvements
 
 ### Authentication & User Experience
-- [ ] Complete authentication system implementation
-- [ ] User browsing history
+- [x] Complete authentication system implementation
+- [x] User browsing history
 - [ ] Personal collections and favorites
 - [ ] User preferences and settings
 - [ ] Artwork comments and ratings
