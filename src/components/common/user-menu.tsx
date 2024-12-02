@@ -1,13 +1,14 @@
 "use client";
 
-import { 
-  LogOut, 
-  User, 
-  Settings, 
-  Heart, 
+import {
+  LogOut,
+  User,
+  Settings,
+  Heart,
   History,
   UserCircle,
-  HelpCircle
+  HelpCircle,
+  FolderPlus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,6 +61,18 @@ export function UserMenu({ email }: UserMenuProps) {
               <span>Profile</span>
             </DropdownMenuItem>
           </Link>
+          <Link href="/collections">
+            <DropdownMenuItem className="cursor-pointer">
+              <FolderPlus className="mr-2 h-4 w-4" />
+              <span>Collections</span>
+            </DropdownMenuItem>
+            <Link href="/explore/collections">
+              <DropdownMenuItem className="cursor-pointer">
+                <FolderPlus className="mr-2 h-4 w-4" />
+                <span>Public Collections</span>
+              </DropdownMenuItem>
+            </Link>
+          </Link>
           <Link href="/favorites">
             <DropdownMenuItem className="cursor-pointer">
               <Heart className="mr-2 h-4 w-4" />
@@ -89,7 +102,7 @@ export function UserMenu({ email }: UserMenuProps) {
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={handleSignOut}
           className="cursor-pointer text-red-600 focus:text-red-600"
         >

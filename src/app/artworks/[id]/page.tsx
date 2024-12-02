@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { checkIsFavorite } from "~/server/actions/favorites";
 import { FavoriteButton } from "~/components/common/favorite-button";
+import { AddToCollectionButton } from "~/components/collections/add-to-collection-button";
 
 interface ArtworkPageProps {
   params: {
@@ -259,10 +260,10 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
                   by {artwork.artistName}
                 </h2>
               </div>
-              <FavoriteButton
-                artworkId={artwork.contentId}
-                initialIsFavorite={isFavorite}
-              />
+              <div className="flex gap-2">
+                <FavoriteButton artworkId={artwork.contentId} />
+                <AddToCollectionButton artworkId={artwork.contentId} />
+              </div>
               <div className="flex flex-wrap gap-2">
                 {artwork.style && (
                   <Badge variant="secondary" className="gap-1">
