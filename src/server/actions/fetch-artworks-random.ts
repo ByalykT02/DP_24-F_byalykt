@@ -39,7 +39,7 @@ function shuffleArray<T>(array: T[]): T[] {
 // Enhanced fetch with automatic timeout and error handling
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

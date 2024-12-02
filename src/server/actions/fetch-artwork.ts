@@ -49,7 +49,7 @@ const PROXY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     // Use proxy endpoint instead of direct WikiArt API

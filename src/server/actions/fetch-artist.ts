@@ -45,7 +45,7 @@ const FALLBACK_ARTIST: ArtistDetailed = {
 
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(`https://www.wikiart.org/en/${endpoint}`, {
