@@ -24,6 +24,8 @@ import { ArtworkDetailed } from "~/lib/types/artwork";
 import { fetchArtwork } from "~/server/actions/fetch-artwork";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { checkIsFavorite } from "~/server/actions/favorites";
+import { FavoriteButton } from "~/components/common/favorite-button";
 
 interface ArtworkPageProps {
   params: {
@@ -39,6 +41,8 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
   const loadingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const historyAddedRef = useRef(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
@@ -46,8 +50,6 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
 
   const { data: session } = useSession();
 
-  
-  
   const router = useRouter();
 
   const calculateImageDimensions = useCallback(
@@ -55,7 +57,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
       if (!containerRef.current) return { width: 0, height: 0 };
 
       const containerWidth = containerRef.current.offsetWidth;
-      const maxHeight = Math.min(window.innerHeight * 0.7, 800); 
+      const maxHeight = Math.min(window.innerHeight * 0.7, 800);
       const aspectRatio = originalWidth / originalHeight;
 
       let width = containerWidth;
@@ -72,18 +74,32 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
   );
 
   useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (session?.user?.id) {
+        const status = await checkIsFavorite(
+          session.user.id,
+          Number(params.id),
+        );
+        setIsFavorite(status);
+      }
+    };
+
+    void checkFavoriteStatus();
+  }, [session?.user?.id, params.id]);
+
+  useEffect(() => {
     const loadArtwork = async () => {
       try {
         setIsLoading(true);
         const artworkData = await fetchArtwork(params.id);
         setArtwork(artworkData);
-  
+
         // Only add to history if not already added and user is logged in
         if (session?.user?.id && !historyAddedRef.current) {
           await addToHistory(session.user.id, artworkData);
           historyAddedRef.current = true;
         }
-  
+
         if (artworkData.width && artworkData.height) {
           const dimensions = calculateImageDimensions(
             artworkData.width,
@@ -98,13 +114,13 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
         setIsLoading(false);
       }
     };
-  
+
     void loadArtwork();
   }, [params.id, calculateImageDimensions, session?.user?.id]);
-  
+
   useEffect(() => {
-      historyAddedRef.current = false;
-    }, [params.id]);
+    historyAddedRef.current = false;
+  }, [params.id]);
 
   // Recalculate dimensions on window resize
   useEffect(() => {
@@ -243,7 +259,10 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
                   by {artwork.artistName}
                 </h2>
               </div>
-
+              <FavoriteButton
+                artworkId={artwork.contentId}
+                initialIsFavorite={isFavorite}
+              />
               <div className="flex flex-wrap gap-2">
                 {artwork.style && (
                   <Badge variant="secondary" className="gap-1">
