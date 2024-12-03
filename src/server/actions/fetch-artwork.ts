@@ -79,9 +79,9 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
 }
 
 function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
-  if (!artwork) {
-    return FALLBACK_ARTWORK;
-  }
+  // if (!artwork) {
+  //   return FALLBACK_ARTWORK;
+  // }
   
   return {
     ...artwork,

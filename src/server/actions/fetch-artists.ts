@@ -1,5 +1,4 @@
 "use server";
-
 import { Artist } from "~/lib/types/artist";
 
 // Constants
@@ -39,17 +38,14 @@ function shuffleArray<T>(array: T[]): T[] {
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
-
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...REQUEST_CONFIG,
       signal: controller.signal,
     });
-
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
     return data as T;
   } catch (error) {
@@ -72,18 +68,36 @@ function processArtist(artist: Artist): Artist {
   };
 }
 
-// Main export
-export async function fetchPopularArtists(): Promise<Artist[]> {
+// Main export with pagination support
+export async function fetchPopularArtists(page: number = 1, pageSize: number = 15): Promise<{
+  artists: Artist[];
+  totalPages: number;
+  currentPage: number;
+}> {
   try {
-    const artists = await fetchApi<Artist[]>(
+    const allArtists = await fetchApi<Artist[]>(
       '/app/api/popularartists?json=1'
     );
-
+    
     // Process and shuffle the artists
-    return shuffleArray(artists)
-      .map(processArtist);
+    const processedArtists = shuffleArray(allArtists).map(processArtist);
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(processedArtists.length / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const paginatedArtists = processedArtists.slice(startIndex, startIndex + pageSize);
+    
+    return {
+      artists: paginatedArtists,
+      totalPages,
+      currentPage: page
+    };
   } catch (error) {
     console.error('Error fetching popular artists:', error);
-    return FALLBACK_ARTISTS;
+    return {
+      artists: FALLBACK_ARTISTS,
+      totalPages: 1,
+      currentPage: 1
+    };
   }
 }

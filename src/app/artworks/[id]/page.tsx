@@ -27,6 +27,7 @@ import { useSession } from "next-auth/react";
 import { checkIsFavorite } from "~/server/actions/favorites";
 import { FavoriteButton } from "~/components/common/favorite-button";
 import { AddToCollectionButton } from "~/components/collections/add-to-collection-button";
+import { ArtworkRecommendations } from "~/components/recommendations/artwork-recommendations";
 
 interface ArtworkPageProps {
   params: {
@@ -95,7 +96,6 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
         const artworkData = await fetchArtwork(params.id);
         setArtwork(artworkData);
 
-        // Only add to history if not already added and user is logged in
         if (session?.user?.id && !historyAddedRef.current) {
           await addToHistory(session.user.id, artworkData);
           historyAddedRef.current = true;
@@ -350,6 +350,10 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             </div>
           </ScrollArea>
         </div>
+      </div>
+      <div className="container mx-auto mt-16 px-4">
+        <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
+        <ArtworkRecommendations excludeIds={[Number(params.id)]} limit={6} />
       </div>
     </div>
   );

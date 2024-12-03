@@ -20,7 +20,7 @@ export default function ArtworkTiles({ artworks }: ArtworkTilesProps) {
   }>>({});
 
   const MAX_RETRIES = 3;
-
+  
   const handleImageLoad = (artworkId: number) => {
     setImageStates(prev => ({
       ...prev,

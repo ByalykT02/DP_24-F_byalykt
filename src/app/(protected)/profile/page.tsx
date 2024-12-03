@@ -5,6 +5,7 @@ import { LogOut, User } from "lucide-react";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "~/components/auth/logout-button";
+import { ArtworkPreferences } from "~/components/preferences/user-preferences";
 
 const ProfilePage = async () => {
   const session = await auth();
@@ -87,6 +88,7 @@ const ProfilePage = async () => {
                 </Button>
               </div>
             </div>
+            <ArtworkPreferences/>
           </div>
         </CardContent>
       </Card>
