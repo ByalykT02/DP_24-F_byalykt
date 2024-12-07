@@ -353,7 +353,11 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
       </div>
       <div className="container mx-auto mt-16 px-4">
         <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
-        <ArtworkRecommendations excludeIds={[Number(params.id)]} limit={6} />
+        <ArtworkRecommendations
+          limit={6}
+          artistId={artwork.artistContentId}
+          artistUrl={artwork.artistUrl}
+        />
       </div>
     </div>
   );

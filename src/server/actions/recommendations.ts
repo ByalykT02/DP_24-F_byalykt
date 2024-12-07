@@ -1,56 +1,31 @@
 "use server";
 
 import { db } from "~/server/db";
-import { desc, eq, and, sql, not, or } from "drizzle-orm";
-import { 
-  artworks, 
-  artists, 
-  viewingHistory, 
-  userInteractions,
-  userPreferences 
-} from "~/server/db/schema";
+import { eq } from "drizzle-orm";
+import { artworks, artists } from "~/server/db/schema";
+import { Artwork } from "~/lib/types/artwork";
+import { fetchApi } from "./fetch-artworks-home";
 
-interface RecommendationParams {
-  userId: string;
+interface ArtworksByArtistParams {
+  artistId: number;
   limit?: number;
-  excludeIds?: number[];
+  artistUrl?: string;
+}
+
+function processArtwork(artwork) {
+  return {
+    ...artwork,
+    image: artwork.image.replace('!Large.jpg', ''),
+  };
 }
 
 export async function getRecommendations({ 
-  userId, 
-  limit = 12,
-  excludeIds = [] 
-}: RecommendationParams) {
+  artistId,
+  artistUrl,
+  limit = 12 
+}: ArtworksByArtistParams) {
   try {
-    // Get user preferences
-    const preferences = await db.query.userPreferences.findFirst({
-      where: eq(userPreferences.userId, userId)
-    });
-
-    // Get user's recently viewed artworks
-    const recentViews = await db
-      .select({ artworkId: viewingHistory.artworkId })
-      .from(viewingHistory)
-      .where(eq(viewingHistory.userId, userId))
-      .orderBy(desc(viewingHistory.viewedAt))
-      .limit(10);
-
-    // Get user's favorite artists (from interactions)
-    const favoriteArtists = await db
-      .select({ artistId: artists.contentId })
-      .from(userInteractions)
-      .innerJoin(artworks, eq(userInteractions.artworkId, artworks.contentId))
-      .innerJoin(artists, eq(artworks.artistContentId, artists.contentId))
-      .where(
-        and(
-          eq(userInteractions.userId, userId),
-          eq(userInteractions.isFavorite, true)
-        )
-      )
-      .groupBy(artists.contentId);
-
-    // Build recommendation query
-    let query = db
+    let artistArtworks = await db
       .select({
         contentId: artworks.contentId,
         title: artworks.title,
@@ -59,41 +34,33 @@ export async function getRecommendations({
         artist: {
           contentId: artists.contentId,
           artistName: artists.artistName,
-        },
+        }
       })
       .from(artworks)
       .innerJoin(artists, eq(artworks.artistContentId, artists.contentId))
-      .where(
-        and(
-          // Exclude already viewed/interacted artworks
-          not(sql`${artworks.contentId} = ANY(${sql`ARRAY[${excludeIds.join(',')}]`})`),
-          
-          // Match user preferences if available
-          preferences?.preferredStyles 
-            ? sql`${artworks.style} && ${sql`${preferences.preferredStyles}`}` 
-            : sql`1=1`,
-          preferences?.preferredPeriods
-            ? sql`${artworks.period} && ${sql`${preferences.preferredPeriods}`}`
-            : sql`1=1`,
-            
-          // Boost artworks from favorite artists
-          favoriteArtists.length > 0
-            ? or(
-                ...favoriteArtists.map(({ artistId }) =>
-                  eq(artworks.artistContentId, artistId)
-                )
-              )
-            : sql`1=1`
-        )
-      )
-      .orderBy(sql`RANDOM()`)
+      .where(eq(artworks.artistContentId, artistId))
       .limit(limit);
-
-    const recommendations = await query;
-
-    return recommendations;
+      
+    if (artistArtworks.length <= 6) { 
+      const additionalArtworks = await fetchApi<Artwork[]>(
+        `/App/Painting/PaintingsByArtist?artistUrl=${artistUrl}&json=2`
+      );
+      
+      const newArtworks = additionalArtworks.map(artwork => ({
+          contentId: artwork.contentId,
+          title: artwork.title,
+          image: artwork.image,
+          yearAsString: artwork.yearAsString,
+          artist: {
+            contentId: artwork.artistContentId,
+            artistName: artwork.artistName
+          }
+        }));
+        artistArtworks = [...artistArtworks, ...newArtworks].slice(0, limit);
+    }
+    return artistArtworks.map(processArtwork);
   } catch (error) {
-    console.error("Failed to get recommendations:", error);
+    console.error("Failed to get artworks by artist:", error);
     return [];
   }
 }

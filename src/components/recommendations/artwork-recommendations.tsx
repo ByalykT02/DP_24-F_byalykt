@@ -6,42 +6,40 @@ import { Skeleton } from "~/components/ui/skeleton";
 import Image from "next/image";
 import Link from "next/link";
 import { getRecommendations } from "~/server/actions/recommendations";
-import { useSession } from "next-auth/react";
 
-interface ArtworkRecommendationsProps {
-  excludeIds?: number[];
+
+interface ArtworksByArtistProps {
+  artistId: number;
   limit?: number;
+  artistUrl?: string
 }
 
 export function ArtworkRecommendations({ 
-  excludeIds = [], 
+  artistId, 
+  artistUrl,
   limit = 6 
-}: ArtworkRecommendationsProps) {
-  const { data: session } = useSession();
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+}: ArtworksByArtistProps) {
+  const [artworks, setArtworks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadRecommendations = async () => {
-      if (!session?.user?.id) return;
-
+    const loadArtworks = async () => {
       setIsLoading(true);
       try {
         const data = await getRecommendations({ 
-          userId: session.user.id,
-          excludeIds,
+          artistId,
+          artistUrl,
           limit
         });
-        setRecommendations(data);
+        setArtworks(data);
       } catch (error) {
-        console.error("Error loading recommendations:", error);
+        console.error("Error loading artworks by artist:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    void loadRecommendations();
-  }, [session?.user?.id, excludeIds, limit]);
+    void loadArtworks();
+  }, [artistId, artistUrl, limit]);
 
   if (isLoading) {
     return (
@@ -53,15 +51,15 @@ export function ArtworkRecommendations({
     );
   }
 
-  if (recommendations.length === 0) {
+  if (artworks.length === 0) {
     return null;
   }
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {recommendations.map((artwork) => (
+      {artworks.map((artwork, index) => (
         <Link
-          key={artwork.contentId}
+          key={`${artwork.contentId}-${index}`}
           href={`/artworks/${artwork.contentId}`}
           className="transition-transform hover:scale-[1.02]"
         >
@@ -69,11 +67,12 @@ export function ArtworkRecommendations({
             <div className="relative aspect-[3/4]">
               <Image
                 src={artwork.image}
-                alt={artwork.title}
+                alt={artwork.title || "Artwork"}
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-              />
+                priority
+                />
             </div>
             <CardContent className="p-4">
               <h3 className="line-clamp-1 font-semibold">{artwork.title}</h3>
