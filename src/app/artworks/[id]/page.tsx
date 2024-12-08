@@ -357,7 +357,6 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
         <ArtworkRecommendations
           limit={6}
           artistId={artwork.artistContentId}
-          artistUrl={artwork.artistUrl}
         />
       </div>
     </div>

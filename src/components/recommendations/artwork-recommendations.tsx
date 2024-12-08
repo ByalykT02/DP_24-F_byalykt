@@ -11,12 +11,10 @@ import { getRecommendations } from "~/server/actions/recommendations";
 interface ArtworksByArtistProps {
   artistId: number;
   limit?: number;
-  artistUrl?: string
 }
 
 export function ArtworkRecommendations({ 
   artistId, 
-  artistUrl,
   limit = 6 
 }: ArtworksByArtistProps) {
   const [artworks, setArtworks] = useState<any[]>([]);
@@ -28,7 +26,6 @@ export function ArtworkRecommendations({
       try {
         const data = await getRecommendations({ 
           artistId,
-          artistUrl,
           limit
         });
         setArtworks(data);
@@ -40,7 +37,7 @@ export function ArtworkRecommendations({
       }
     };
     void loadArtworks();
-  }, [artistId, artistUrl, limit]);
+  }, [artistId, limit]);
 
   if (isLoading) {
     return (

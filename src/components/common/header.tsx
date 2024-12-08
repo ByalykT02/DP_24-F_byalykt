@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import { Input } from "~/components/ui/input";
 import { Search, Menu } from "lucide-react";
@@ -9,17 +8,17 @@ import { UserMenu } from "./user-menu";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-
+import { SearchCommand } from "../search/search-commands";
 
 export default function Header() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
-    useEffect(() => {
-      if (status === 'authenticated' || status === 'unauthenticated') {
-        router.refresh();
-      }
-    }, [status, router]);
+
+  useEffect(() => {
+    if (status === "authenticated" || status === "unauthenticated") {
+      router.refresh();
+    }
+  }, [status, router]);
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -51,12 +50,9 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <div className="relative hidden md:flex">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search art & artists..."
-              className="w-[200px] pl-8 lg:w-[300px]"
-            />
+            <SearchCommand />
           </div>
-          
+
           {status === "loading" ? (
             <Button variant="outline" size="sm" disabled>
               Loading...

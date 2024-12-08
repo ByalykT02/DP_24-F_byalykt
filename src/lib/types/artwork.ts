@@ -59,3 +59,15 @@ export interface ArtworkDetailed {
   // Optional Fields
   description: string | null;
 }
+
+export interface WikiArtSearchResult {
+  title: string;
+  contentId: number;
+  artistContentId: number;
+  artistName: string;
+  completitionYear: number | null;
+  yearAsString: string | null;
+  width: number;
+  image: string;
+  height: number;
+}
