@@ -28,8 +28,8 @@ export interface ArtworkDetailed {
   // Categorization
   genre: string | null;
   style: string | null;
-  tags: string | null;
-  dictionaries: number[] | null[];
+  tags: string;
+  dictionaries: number[];
 
   // Physical Characteristics
   sizeX: number | null;

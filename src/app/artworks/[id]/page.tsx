@@ -95,6 +95,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
         setIsLoading(true);
         const artworkData = await fetchArtwork(params.id);
         setArtwork(artworkData);
+        console.log("FINISHED LOADING ARTWORK", artworkData)
 
         if (session?.user?.id && !historyAddedRef.current) {
           await addToHistory(session.user.id, artworkData);

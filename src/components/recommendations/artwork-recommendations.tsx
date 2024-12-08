@@ -32,6 +32,7 @@ export function ArtworkRecommendations({
           limit
         });
         setArtworks(data);
+        console.log("FINISHED LOADING RECOMMENDATIONS", data)
       } catch (error) {
         console.error("Error loading artworks by artist:", error);
       } finally {

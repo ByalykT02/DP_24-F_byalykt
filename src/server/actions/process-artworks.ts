@@ -10,34 +10,37 @@ export async function processArtworksToDb(artworks: Artwork[]) {
       artworks.map(async (artwork) => {
         try {
           const artworkData = await fetchArtwork(String(artwork.contentId));
-          console.log('Fetched Artwork:', artworkData); // Detailed logging
+
           const processedArtwork = await ensureArtworkExists(artworkData);
-          console.log('Processed Artwork:', processedArtwork); // Log processed result
+
           return processedArtwork;
         } catch (individualError) {
-          console.error(`Error processing artwork ${artwork.contentId}:`, individualError);
+          console.error(
+            `Error processing artwork ${artwork.contentId}:`,
+            individualError,
+          );
           throw individualError; // Rethrow to ensure it's counted as rejected
         }
-      })
+      }),
     );
 
     const successfulResults = results.filter(
-      (result) => result.status === "fulfilled"
+      (result) => result.status === "fulfilled",
     );
     const failedResults = results.filter(
-      (result) => result.status === "rejected"
+      (result) => result.status === "rejected",
     );
 
-    console.log('Successful Results:', successfulResults.length);
-    console.log('Failed Results:', failedResults.length);
+    console.log("Successful Results:", successfulResults.length);
+    console.log("Failed Results:", failedResults.length);
 
     return {
       success: true,
       processed: successfulResults.length,
       total: artworks.length,
-      errors: failedResults.map((result) => 
-        result.status === 'rejected' ? result.reason : null
-      ).filter(Boolean)
+      errors: failedResults
+        .map((result) => (result.status === "rejected" ? result.reason : null))
+        .filter(Boolean),
     };
   } catch (error) {
     console.error("Error processing artworks:", error);
@@ -45,7 +48,7 @@ export async function processArtworksToDb(artworks: Artwork[]) {
       success: false,
       error: "Failed to process artworks",
       processed: 0,
-      total: artworks.length
+      total: artworks.length,
     };
   }
 }

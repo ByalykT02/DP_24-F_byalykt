@@ -37,7 +37,8 @@ const FALLBACK_ARTWORK: ArtworkDetailed = {
   period: null,
   serie: null,
   galleryName: "Mucha Museum, Prague, Czech Republic",
-  image: "https://uploads7.wikiart.org/images/alphonse-mucha/holy-mount-athos-1926.jpg",
+  image:
+    "https://uploads7.wikiart.org/images/alphonse-mucha/holy-mount-athos-1926.jpg",
   auction: null,
   yearOfTrade: null,
   lastPrice: null,
@@ -45,7 +46,7 @@ const FALLBACK_ARTWORK: ArtworkDetailed = {
 };
 
 // Create a proxy URL for your backend API
-const PROXY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const PROXY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
@@ -67,11 +68,11 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
     const data = await response.json();
     return data as T;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Request timeout for ${endpoint}`);
     }
     throw new Error(
-      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   } finally {
     clearTimeout(timeoutId);
@@ -82,23 +83,29 @@ function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
   // if (!artwork) {
   //   return FALLBACK_ARTWORK;
   // }
-  
+
   return {
     ...artwork,
-    image: artwork.image?.replace(/!(Large|Portrait|Square|PinterestSmall)\.jpg$/, '') || FALLBACK_ARTWORK.image
+    image:
+      artwork.image?.replace(
+        /!(Large|Portrait|Square|PinterestSmall)\.jpg$/,
+        "",
+      ) || FALLBACK_ARTWORK.image,
     // image: artwork.image || FALLBACK_ARTWORK.image
-
   };
 }
 
-export async function fetchArtwork(contentId: string): Promise<ArtworkDetailed> {
+export async function fetchArtwork(
+  contentId: string,
+): Promise<ArtworkDetailed> {
   try {
     const artwork = await fetchApi<ArtworkDetailed>(
-      `/App/Painting/ImageJson/${contentId}`
+      `/App/Painting/ImageJson/${contentId}`,
     );
+
     return processArtworkData(artwork);
   } catch (error) {
-    console.error('Error fetching artwork:', error);
+    console.error("Error fetching artwork:", error);
     return FALLBACK_ARTWORK;
   }
 }

@@ -16,16 +16,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
-/**
- * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
- * database instance for multiple projects.
- *
- * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
- */
 export const createTable = pgTableCreator((name) => `${name}`);
 
 export const userRoleEnum = pgEnum("user_role", ["ADMIN", "USER"]);
-
 
 export const users = createTable("user", {
   id: varchar("id", { length: 255 })
@@ -39,7 +32,7 @@ export const users = createTable("user", {
     withTimezone: true,
   }).default(sql`CURRENT_TIMESTAMP`),
   image: varchar("image", { length: 255 }),
-  password: varchar("password", {length: 255}),
+  password: varchar("password", { length: 255 }),
   role: userRoleEnum("role").notNull().default("USER"),
 });
 
@@ -154,10 +147,11 @@ export const artworks = createTable("artwork", {
   yearAsString: varchar("year_as_string", { length: 50 }),
   genre: varchar("genre", { length: 100 }),
   style: varchar("style", { length: 100 }),
-  tags: json("tags").$type<string[]>(),
-  width: decimal("width", { precision: 10, scale: 2 }),
-  height: decimal("height", { precision: 10, scale: 2 }),
-  diameter: decimal("diameter", { precision: 10, scale: 2 }),
+  tags: text("tags"),
+  dictionaries: json("dictionaries"),
+  width: decimal("width", { precision: 6, scale: 2 }),
+  height: decimal("height", { precision: 6, scale: 2 }),
+  diameter: decimal("diameter", { precision: 6, scale: 2 }),
   material: varchar("material", { length: 255 }),
   technique: varchar("technique", { length: 255 }),
   location: varchar("location", { length: 255 }),
@@ -167,10 +161,10 @@ export const artworks = createTable("artwork", {
   image: varchar("image", { length: 1000 }),
   auction: text("auction"),
   yearOfTrade: integer("year_of_trade"),
-  lastPrice: decimal("last_price", { precision: 15, scale: 2 }),
+  lastPrice: decimal("last_price", { precision: 10, scale: 2 }),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
 // User Preferences and Collections
@@ -251,20 +245,26 @@ export const artworkRelations = relations(artworks, ({ one }) => ({
   }),
 }));
 
-export const userCollectionRelations = relations(userCollections, ({ many }) => ({
-  items: many(collectionItems),
-}));
+export const userCollectionRelations = relations(
+  userCollections,
+  ({ many }) => ({
+    items: many(collectionItems),
+  }),
+);
 
-export const collectionItemRelations = relations(collectionItems, ({ one }) => ({
-  collection: one(userCollections, {
-    fields: [collectionItems.collectionId],
-    references: [userCollections.id],
+export const collectionItemRelations = relations(
+  collectionItems,
+  ({ one }) => ({
+    collection: one(userCollections, {
+      fields: [collectionItems.collectionId],
+      references: [userCollections.id],
+    }),
+    artwork: one(artworks, {
+      fields: [collectionItems.artworkId],
+      references: [artworks.contentId],
+    }),
   }),
-  artwork: one(artworks, {
-    fields: [collectionItems.artworkId],
-    references: [artworks.contentId],
-  }),
-}));
+);
 
 export const viewingHistoryRelations = relations(viewingHistory, ({ one }) => ({
   user: one(users, {
