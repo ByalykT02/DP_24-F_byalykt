@@ -8,6 +8,8 @@ export const env = createEnv({
    */
   server: {
     POSTGRES_URL: z.string().url(),
+    WIKIART_ACCESS_CODE: z.string(),
+    WIKIART_SECRET_CODE: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -29,6 +31,8 @@ export const env = createEnv({
   runtimeEnv: {
     POSTGRES_URL: process.env.POSTGRES_URL,
     NODE_ENV: process.env.NODE_ENV,
+    WIKIART_ACCESS_CODE: process.env.WIKIART_ACCESS_CODE,
+    WIKIART_SECRET_CODE: process.env.WIKIART_SECRET_CODE,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

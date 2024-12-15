@@ -8,7 +8,7 @@ export interface Artist{
   deathDayAsString: string,
   image: string,
   wikipediaUrl: string,
-  dictonaries: number[]
+  dictonaries?: number[]
 }
 
 export interface ArtistDetailed {
