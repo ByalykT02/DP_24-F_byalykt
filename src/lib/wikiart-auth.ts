@@ -15,7 +15,7 @@ export async function getWikiArtAuthSession(): Promise<string> {
 
   try {
     const response = await fetch(
-      `https://www.wikiart.org/en/Api/2/login?accessCode=${env.WIKIART_ACCESS_CODE}&secretCode=${env.WIKIART_SECRET_CODE}`,
+      `https://www.wikiart.org/en/Api/2/login?accessCode=${process.env.WIKIART_ACCESS_CODE}&secretCode=${process.env.WIKIART_SECRET_CODE}`,
       {
         headers: {
           Accept: "application/json",
