@@ -114,8 +114,8 @@ export const verificationTokens = createTable(
 export const artists = createTable("artist", {
   contentId: integer("content_id").primaryKey(),
   artistName: varchar("artist_name", { length: 255 }).notNull(),
-  url: varchar("url", { length: 255 }).notNull(),
-  lastNameFirst: varchar("last_name_first", { length: 255 }).notNull(),
+  url: varchar("url", { length: 255 }),
+  lastNameFirst: varchar("last_name_first", { length: 255 }),
   birthDay: date("birth_day"),
   deathDay: date("death_day"),
   birthDayAsString: varchar("birth_day_string", { length: 100 }),
@@ -141,9 +141,10 @@ export const artworks = createTable("artwork", {
   artistContentId: integer("artist_content_id")
     .notNull()
     .references(() => artists.contentId),
+  artistName: varchar("artist_name", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
   url: varchar("url", { length: 255 }),
-  completitionYear: integer("completion_year"),
+  completitionYear: integer("completition_year"),
   yearAsString: varchar("year_as_string", { length: 50 }),
   genre: varchar("genre", { length: 100 }),
   style: varchar("style", { length: 100 }),
