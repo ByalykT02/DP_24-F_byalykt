@@ -1,6 +1,9 @@
 "use server";
 
 import { Artwork } from "~/lib/types/artwork";
+import { db } from "../db";
+import { artworks } from "../db/schema";
+import { sql } from "drizzle-orm";
 
 // Constants
 const API_BASE_URL = "https://www.wikiart.org/en";
@@ -24,14 +27,15 @@ const FALLBACK_ARTWORKS = [
     yearAsString: "1889",
     width: 921,
     height: 737,
-    image: "https://uploads7.wikiart.org/images/vincent-van-gogh/the-starry-night-1889.jpg",
+    image:
+      "https://uploads7.wikiart.org/images/vincent-van-gogh/the-starry-night-1889.jpg",
   },
-]
+];
 
 // Utility function to shuffle array
 function shuffleArray<T>(array: T[]): T[] {
   return array
-    .map(value => ({ value, sort: Math.random() }))
+    .map((value) => ({ value, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
     .map(({ value }) => value);
 }
@@ -54,11 +58,11 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
     const data = await response.json();
     return data as T;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Request timeout for ${endpoint}`);
     }
     throw new Error(
-      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   } finally {
     clearTimeout(timeoutId);
@@ -69,7 +73,7 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 function processArtwork(artwork: Artwork): Artwork {
   return {
     ...artwork,
-    image: artwork.image.replace('!Large.jpg', ''),
+    image: artwork.image.replace("!Large.jpg", ""),
   };
 }
 
@@ -77,17 +81,25 @@ function processArtwork(artwork: Artwork): Artwork {
 export async function fetchRandomArtworks(): Promise<Artwork[]> {
   try {
     // Generate a random seed
-    const randomSeed = Math.floor(Math.random() * 1000);
-    
-    const artworks = await fetchApi<Artwork[]>(
-      `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`
-    );
+    //const randomSeed = Math.floor(Math.random() * 1000);
 
-    return shuffleArray(artworks)
-      .slice(0, MAX_ARTWORKS)
-      .map(processArtwork);
+    // const artworks = await fetchApi<Artwork[]>(
+    //   `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`
+    // );
+    //
+
+    const dbArtworks = await db
+      .select()
+      .from(artworks)
+      .orderBy(sql`RANDOM()`)
+      .limit(64);
+    // return shuffleArray(artworks)
+    //   .slice(0, MAX_ARTWORKS)
+    //   .map(processArtwork);
+    //
+    return dbArtworks;
   } catch (error) {
-    console.error('Error fetching random artworks:', error);
+    console.error("Error fetching random artworks:", error);
     return FALLBACK_ARTWORKS;
   }
 }
