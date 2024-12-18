@@ -142,6 +142,7 @@ export const artworks = createTable("artwork", {
     .notNull()
     .references(() => artists.contentId),
   artistName: varchar("artist_name", { length: 255 }),
+  artistUrl: varchar("artist_url", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
   url: varchar("url", { length: 255 }),
   completitionYear: integer("completition_year"),

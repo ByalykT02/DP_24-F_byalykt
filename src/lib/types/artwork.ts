@@ -11,52 +11,25 @@ export interface Artwork {
 }
 
 export interface ArtworkDetailed {
-  // Artist Information
-  artistName: string;
-  artistUrl: string;
-  artistContentId: number;
-
-  // Artwork Identification
   contentId: number;
+  artistContentId: number;
+  artistName: string;
+  artistUrl: string | null;
   title: string;
-  url: string;
-
-  // Creation Details
+  url: string | null;
   completitionYear: number | null;
   yearAsString: string | null;
-
-  // Categorization
   genre: string | null;
+  tags: string | null; // Changed from string[] to string
   style: string | null;
-  tags: string;
-  dictionaries: number[];
-
-  // Physical Characteristics
-  sizeX: number | null;
-  sizeY: number | null;
-  diameter: number | null;
+  dictionaries: (string | number)[] | null; // Allow both string and number
   width: number | null;
   height: number | null;
-  
-  // Materials and Techniques
   material: string | null;
   technique: string | null;
-
-  // Location and Series
   location: string | null;
   period: string | null;
-  serie: string | null;
-  galleryName: string | null;
-
-  // Image
-  image: string | null;
-
-  // Commercial Information
-  auction: string | null;
-  yearOfTrade: number | null;
-  lastPrice: number | null;
-
-  // Optional Fields
+  image: string;
   description: string | null;
 }
 

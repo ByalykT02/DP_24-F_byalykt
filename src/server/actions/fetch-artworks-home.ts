@@ -2,9 +2,6 @@
 
 import { Artist } from "~/lib/types/artist";
 import { Artwork } from "~/lib/types/artwork";
-import { db } from "../db";
-import { eq, sql } from "drizzle-orm";
-import { artists, artworks } from "../db/schema";
 
 // Constants
 const API_BASE_URL = "https://www.wikiart.org/en";
@@ -28,7 +25,8 @@ const FALLBACK_DATA = {
     deathDayAsString: "July 14, 1939",
     image: "https://uploads6.wikiart.org/images/alphonse-mucha.jpg!Portrait.jpg",
     wikipediaUrl: "http://en.wikipedia.org/wiki/Alphonse_Mucha",
-  } as Artist,
+    dictonaries: [318, 7741],
+  } as const,
   artworks: [
     {
       title: "The Starry Night",
@@ -40,8 +38,8 @@ const FALLBACK_DATA = {
       width: 921,
       height: 737,
       image: "https://uploads7.wikiart.org/images/vincent-van-gogh/the-starry-night-1889.jpg",
-    } as Artwork,
-  ],
+    },
+  ] as const,
 };
 
 // Utility function to shuffle array
@@ -55,7 +53,7 @@ function shuffleArray<T>(array: T[]): T[] {
 // Enhanced fetch with automatic timeout and error handling
 export async function fetchApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 100000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -75,28 +73,6 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
     );
   } finally {
     clearTimeout(timeoutId);
-  }
-}
-
-//Fetch artist from the db
-async function fetchArtist(): Promise<Artist> {
-  try {
-    const dbArtist = await db
-      .select()
-      .from(artists)
-      .orderBy(sql`RANDOM()`)
-      .limit(1)
-      .then(rows => rows[0]);
-
-    if (!dbArtist) {
-      throw new Error("No artist found in the database.");
-    }
-
-    console.log(`Artist fetched from DB: ${dbArtist.artistName}`);
-    return dbArtist as Artist;
-  } catch (error) {
-    console.error("Error fetching artist from DB:", error);
-    return FALLBACK_DATA.artist;
   }
 }
 
@@ -125,20 +101,17 @@ function processArtwork(artwork: Artwork): Artwork {
 // Main export
 export async function fetchArtworks(): Promise<Artwork[]> {
   try {
-    //const artist = await getRandomArtist();
-    const artist = await fetchArtist();
-    console.log("THE FETCHED ARTIST IS" + artist.artistName)
-    // const artworks = await fetchWikiArtApi<Artwork[]>(
-    //   `/App/Painting/PaintingsByArtist?artistUrl=${artist.url}&json=2`
-    // );
+    const artist = await getRandomArtist();
     
-    const dbArtworks = await db.select().from(artworks).where(eq(artworks.artistContentId, 227598)).limit(9).then(rows => rows);
-    console.log(dbArtworks)
-    return shuffleArray(dbArtworks)
+    const artworks = await fetchApi<Artwork[]>(
+      `/App/Painting/PaintingsByArtist?artistUrl=${artist.url}&json=2`
+    );
+
+    return shuffleArray(artworks)
       .slice(0, MAX_ARTWORKS)
-    //.map(processArtwork);
+      .map(processArtwork);
   } catch (error) {
     console.error('Error fetching artworks:', error);
-    return FALLBACK_DATA.artworks;
+    return FALLBACK_DATA.artworks
   }
 }

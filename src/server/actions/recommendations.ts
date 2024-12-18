@@ -72,17 +72,12 @@ export async function getRecommendations({
   limit = 25,
 }: RecommendationParams) {
   try {
-    console.log(`Fetching reference artwork for artistId: ${artistId}`);
     const referenceArtwork = await getArtworkDetails(artistId);
 
     if (!referenceArtwork) {
       console.log("No reference artwork found for the given artistId.");
       return [];
     }
-    console.log(
-      "Reference artwork details:",
-      JSON.stringify(referenceArtwork, null, 2),
-    );
 
     const recommendedArtworks = await db
       .select({
@@ -111,8 +106,6 @@ export async function getRecommendations({
       );
     // .limit(limit * 2);
 
-    console.log(`Fetched ${recommendedArtworks.length} artworks for scoring.`);
-
     const scoredArtworks = recommendedArtworks
       .map((artwork) => {
         const tagSimilarity = calculateTagSimilarity(
@@ -136,9 +129,7 @@ export async function getRecommendations({
         // console.log(
         //   `Artwork ${artwork.contentId} (${artwork.title}) - Score: ${score}, Tag Similarity: ${tagSimilarity}, Dictionary Similarity: ${dictionarySimilarity}`,
         // );
-        console.log(
-          `Artwork ${artwork.title} ---- ${artwork.artist.artistName}`,
-        );
+
         return { ...artwork, score };
       })
       .sort((a, b) => b.score - a.score);

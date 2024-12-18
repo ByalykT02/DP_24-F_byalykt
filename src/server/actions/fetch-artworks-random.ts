@@ -81,23 +81,23 @@ function processArtwork(artwork: Artwork): Artwork {
 export async function fetchRandomArtworks(): Promise<Artwork[]> {
   try {
     // Generate a random seed
-    //const randomSeed = Math.floor(Math.random() * 1000);
+    const randomSeed = Math.floor(Math.random() * 1000);
 
-    // const artworks = await fetchApi<Artwork[]>(
-    //   `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`
-    // );
-    //
+    const artworks = await fetchApi<Artwork[]>(
+      `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`
+    );
+    
 
-    const dbArtworks = await db
-      .select()
-      .from(artworks)
-      .orderBy(sql`RANDOM()`)
-      .limit(64);
-    // return shuffleArray(artworks)
-    //   .slice(0, MAX_ARTWORKS)
-    //   .map(processArtwork);
-    //
-    return dbArtworks;
+    // const dbArtworks = await db
+    //   .select()
+    //   .from(artworks)
+    //   .orderBy(sql`RANDOM()`)
+    //   .limit(64);
+    return shuffleArray(artworks)
+      .slice(0, MAX_ARTWORKS)
+      .map(processArtwork);
+    
+    // return dbArtworks;
   } catch (error) {
     console.error("Error fetching random artworks:", error);
     return FALLBACK_ARTWORKS;

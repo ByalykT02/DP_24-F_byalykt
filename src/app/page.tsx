@@ -12,7 +12,7 @@ import { processArtworksToDb } from "~/server/actions/process-artworks";
 const MainPage = () => {
   const [results, setResults] = useState<Artwork[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAnnouncement, setShowAnnouncement] = useState(true);
+  // const [showAnnouncement, setShowAnnouncement] = useState(true);
   const loadingRef = useRef(false);
 
   const loadArtworks = useCallback(async () => {
@@ -36,7 +36,7 @@ const MainPage = () => {
 
   return (
     <>
-      {showAnnouncement && (
+      {/* {showAnnouncement && (
         <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-500 ease-in-out">
           <div className="animate-scale-up mx-4 max-w-md transform rounded-lg bg-white p-6 shadow-xl transition-transform duration-500 ease-in-out">
             <h3 className="mb-4 text-xl font-semibold text-gray-800">
@@ -57,8 +57,8 @@ const MainPage = () => {
             </button>
           </div>
         </div>
-      )}
-      {/* {isLoading && <Loading />} */}
+      )} */}
+      {isLoading && <Loading />}
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <Hero artworks={results} />
         <ArtworkTiles artworks={results} />

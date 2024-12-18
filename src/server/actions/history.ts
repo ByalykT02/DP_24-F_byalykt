@@ -5,19 +5,33 @@ import { db } from "~/server/db";
 import { viewingHistory, artworks, artists } from "~/server/db/schema";
 import { ensureArtworkExists } from "./artwork-to-db";
 import { ArtworkDetailed } from "~/lib/types/artwork";
+import { logger } from "~/utils/logger";
 
+// Add artwork to viewing history
 export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
+  const logContext = {
+    action: 'addToHistory',
+    userId,
+    artworkId: artwork.contentId,
+  };
+
   try {
-    // First ensure the artwork exists in our database
-    const success = await ensureArtworkExists(artwork);
-    if (!success) {
-      throw new Error("Failed to ensure artwork exists");
+    // Ensure the artwork exists in the database
+    const artworkResult = await ensureArtworkExists(artwork);
+    if (!artworkResult.success) {
+      logger.error('Failed to ensure artwork exists', {
+        ...logContext,
+        error: artworkResult.error,
+        details: artworkResult.details,
+      });
+      return { 
+        success: false, 
+        error: 'Failed to ensure artwork exists in database',
+        details: artworkResult.details,
+      };
     }
 
-    await db.insert(viewingHistory).values({
-      userId,
-      artworkId: artwork.contentId,
-    });
+    // Prevent duplicate views within the last minute
     const recentView = await db
       .select()
       .from(viewingHistory)
@@ -25,25 +39,55 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
         and(
           eq(viewingHistory.userId, userId),
           eq(viewingHistory.artworkId, artwork.contentId),
-          sql`${viewingHistory.viewedAt} > NOW() - INTERVAL '1 minute'`,
-        ),
+          sql`${viewingHistory.viewedAt} > NOW() - INTERVAL '1 minute'`
+        )
       )
       .limit(1);
 
-    // If no recent view exists, add new entry
+    // Insert viewing history if no recent view is found
     if (recentView.length === 0) {
+      // Verify artwork exists before inserting
+      const existingArtwork = await db.query.artworks.findFirst({
+        where: eq(artworks.contentId, artwork.contentId),
+      });
+
+      if (!existingArtwork) {
+        logger.error('Artwork not found in database', logContext);
+        return {
+          success: false,
+          error: 'Artwork not found in database',
+        };
+      }
+
       await db.insert(viewingHistory).values({
         userId,
         artworkId: artwork.contentId,
+        viewedAt: new Date(),
       });
+
+      logger.info('Successfully added to history', logContext);
+    } else {
+      logger.info('Recent view exists, skipping insert', logContext);
     }
+
     return { success: true };
+
   } catch (error) {
-    console.error("Failed to add to history:", error);
-    return { success: false, error: "Failed to add to history" };
+    logger.error('Failed to add to history', {
+      ...logContext,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return {
+      success: false,
+      error: 'Failed to add to viewing history',
+      details: error instanceof Error ? error.message : undefined,
+    };
   }
 }
 
+// Get viewing history for a user
 export async function getViewingHistory(userId: string) {
   try {
     const history = await db
@@ -70,12 +114,14 @@ export async function getViewingHistory(userId: string) {
       .limit(50);
 
     return history;
+
   } catch (error) {
     console.error("Failed to get viewing history:", error);
     return [];
   }
 }
 
+// Clear the viewing history for a user
 export async function clearHistory(userId: string) {
   try {
     await db.delete(viewingHistory).where(eq(viewingHistory.userId, userId));
