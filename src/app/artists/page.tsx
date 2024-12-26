@@ -68,7 +68,7 @@ export default function ArtistsPage() {
       <div className="container mx-auto px-4">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Popular Artists</h1>
-          <Button
+          {/* <Button
             onClick={() => void loadArtists()}
             variant="outline"
             className="gap-2"
@@ -76,7 +76,7 @@ export default function ArtistsPage() {
           >
             <RefreshCcw className="h-4 w-4" />
             Refresh
-          </Button>
+          </Button> */}
         </div>
         
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">

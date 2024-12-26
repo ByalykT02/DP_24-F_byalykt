@@ -78,28 +78,41 @@ function processArtwork(artwork: Artwork): Artwork {
 }
 
 // Main export
-export async function fetchRandomArtworks(): Promise<Artwork[]> {
+export async function fetchRandomArtworks(
+  page: number = 1,
+  pageSize: number = 15,
+): Promise<{
+  artworks: Artwork[];
+  totalPages: number;
+  currentPage: number;
+}> {
   try {
     // Generate a random seed
     const randomSeed = Math.floor(Math.random() * 1000);
 
     const artworks = await fetchApi<Artwork[]>(
-      `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`
+      `/App/Painting/MostViewedPaintings?randomSeed=${randomSeed}&json=2`,
     );
-    
+
+    const totalPages = Math.ceil(artworks.length / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const paginatedArtworks = artworks.slice(startIndex, startIndex + pageSize).map(processArtwork);;
 
     // const dbArtworks = await db
     //   .select()
     //   .from(artworks)
     //   .orderBy(sql`RANDOM()`)
     //   .limit(64);
-    return shuffleArray(artworks)
-      .slice(0, MAX_ARTWORKS)
-      .map(processArtwork);
-    
+    // return shuffleArray(artworks).slice(0, MAX_ARTWORKS).map(processArtwork);
+    //const randomizedArtworks = shuffleArray(artworks).map(processArtwork);
+    return {
+      artworks: paginatedArtworks,
+      totalPages,
+      currentPage: page,
+    };
     // return dbArtworks;
   } catch (error) {
     console.error("Error fetching random artworks:", error);
-    return FALLBACK_ARTWORKS;
+    return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
   }
 }
