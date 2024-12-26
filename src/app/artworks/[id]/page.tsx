@@ -8,7 +8,6 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Button } from "~/components/ui/button";
 import { addToHistory } from "~/server/actions/history";
-
 import {
   Share2,
   ArrowLeft,
@@ -29,88 +28,117 @@ import { FavoriteButton } from "~/components/common/favorite-button";
 import { AddToCollectionButton } from "~/components/collections/add-to-collection-button";
 import { ArtworkRecommendations } from "~/components/recommendations/artwork-recommendations";
 
+// Types
+interface DetailCardProps {
+  title: string;
+  content: string | null;
+  icon?: React.ReactNode;
+}
+
 interface ArtworkPageProps {
   params: {
     id: string;
   };
 }
 
-export default function ArtworkPage({ params }: ArtworkPageProps) {
+// Components
+const DetailCard = ({ title, content, icon }: DetailCardProps) => {
+  if (!content) return null;
+
+  return (
+    <div className="rounded-lg bg-white p-4 shadow-sm transition-all hover:shadow-md">
+      <h4 className="mb-2 flex items-center gap-2 font-medium text-gray-500">
+        {icon}
+        {title}
+      </h4>
+      <p className="text-gray-700">{content}</p>
+    </div>
+  );
+};
+
+const ImageViewer = ({
+  artwork,
+  isZoomed,
+  onToggleZoom,
+  dimensions,
+}: {
+  artwork: ArtworkDetailed;
+  isZoomed: boolean;
+  onToggleZoom: () => void;
+  dimensions: { width: number; height: number };
+}) => (
+  <Card
+    className={`overflow-hidden bg-black/5 backdrop-blur-sm ${
+      isZoomed
+        ? "fixed inset-4 z-50 flex items-center justify-center bg-black/90"
+        : ""
+    }`}
+  >
+    <div
+      className={`relative flex items-center justify-center ${
+        isZoomed ? "h-full w-full" : ""
+      }`}
+      onClick={onToggleZoom}
+      role="button"
+      tabIndex={0}
+      aria-label={isZoomed ? "Exit fullscreen" : "View fullscreen"}
+      onKeyDown={(e) => e.key === "Enter" && onToggleZoom()}
+    >
+      {artwork.image && (
+        <Image
+          src={artwork.image}
+          alt={artwork.title || "Artwork"}
+          width={isZoomed ? artwork.width ?? 800 : dimensions.width || 800}
+          height={isZoomed ? artwork.height ?? 600 : dimensions.height || 600}
+          className={`object-contain transition-transform duration-200 ${
+            isZoomed ? "max-h-full max-w-full" : ""
+          }`}
+          priority
+          sizes={isZoomed ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
+        />
+      )}
+    </div>
+    <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
+      <div className="flex items-center justify-between">
+        <Badge variant="secondary" className="gap-1">
+          <Ruler className="h-3 w-3" />
+          {artwork.width} x {artwork.height}
+        </Badge>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-2"
+          onClick={onToggleZoom}
+          aria-label={isZoomed ? "Exit fullscreen view" : "View in fullscreen"}
+        >
+          <Eye className="h-4 w-4" />
+          {isZoomed ? "Exit Fullscreen" : "View Fullscreen"}
+        </Button>
+      </div>
+    </div>
+  </Card>
+);
+
+// Custom hooks
+const useArtworkData = (id: string, userId?: string) => {
   const [artwork, setArtwork] = useState<ArtworkDetailed>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isImageZoomed, setIsImageZoomed] = useState(false);
-  const loadingRef = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const historyAddedRef = useRef(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  const [imageDimensions, setImageDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
-
-  const { data: session } = useSession();
-
-  const router = useRouter();
-
-  const calculateImageDimensions = useCallback(
-    (originalWidth: number, originalHeight: number) => {
-      if (!containerRef.current) return { width: 0, height: 0 };
-
-      const containerWidth = containerRef.current.offsetWidth;
-      const maxHeight = Math.min(window.innerHeight * 0.7, 800);
-      const aspectRatio = originalWidth / originalHeight;
-
-      let width = containerWidth;
-      let height = containerWidth / aspectRatio;
-
-      if (height > maxHeight) {
-        height = maxHeight;
-        width = maxHeight * aspectRatio;
-      }
-
-      return { width, height };
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const checkFavoriteStatus = async () => {
-      if (session?.user?.id) {
-        const status = await checkIsFavorite(
-          session.user.id,
-          Number(params.id),
-        );
-        setIsFavorite(status);
-      }
-    };
-
-    void checkFavoriteStatus();
-  }, [session?.user?.id, params.id]);
 
   useEffect(() => {
     const loadArtwork = async () => {
       try {
         setIsLoading(true);
-        const artworkData = await fetchArtwork(params.id);
+        const artworkData = await fetchArtwork(id);
         setArtwork(artworkData);
-        console.log("FINISHED LOADING ARTWORK", artworkData)
 
-        if (session?.user?.id && !historyAddedRef.current) {
-          await addToHistory(session.user.id, artworkData);
+        if (userId && !historyAddedRef.current) {
+          await addToHistory(userId, artworkData);
           historyAddedRef.current = true;
         }
-
-        if (artworkData.width && artworkData.height) {
-          const dimensions = calculateImageDimensions(
-            artworkData.width,
-            artworkData.height,
-          );
-          setImageDimensions(dimensions);
-        }
-      } catch (error) {
-        console.error("Error loading artwork:", error);
+      } catch (err) {
+        console.error("Error loading artwork:", err);
         setError("Failed to load artwork. Please try again later.");
       } finally {
         setIsLoading(false);
@@ -118,27 +146,80 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     };
 
     void loadArtwork();
-  }, [params.id, calculateImageDimensions, session?.user?.id]);
+    return () => {
+      historyAddedRef.current = false;
+    };
+  }, [id, userId]);
+
+  return { artwork, isLoading, error };
+};
+
+const useImageDimensions = (artwork?: ArtworkDetailed) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  const calculateDimensions = useCallback(() => {
+    if (!containerRef.current || !artwork?.width || !artwork?.height) return;
+
+    const containerWidth = containerRef.current.offsetWidth;
+    const maxHeight = Math.min(window.innerHeight * 0.7, 800);
+    const aspectRatio = artwork.width / artwork.height;
+
+    let width = containerWidth;
+    let height = containerWidth / aspectRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = maxHeight * aspectRatio;
+    }
+
+    setDimensions({ width, height });
+  }, [artwork?.width, artwork?.height]);
 
   useEffect(() => {
-    historyAddedRef.current = false;
-  }, [params.id]);
+    calculateDimensions();
+    window.addEventListener("resize", calculateDimensions);
+    return () => window.removeEventListener("resize", calculateDimensions);
+  }, [calculateDimensions]);
 
-  // Recalculate dimensions on window resize
+  return { containerRef, dimensions };
+};
+
+// Main component
+export default function ArtworkPage({ params }: ArtworkPageProps) {
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const router = useRouter();
+  const { data: session } = useSession();
+  
+  const { artwork, isLoading, error } = useArtworkData(
+    params.id,
+    session?.user?.id
+  );
+  const { containerRef, dimensions } = useImageDimensions(artwork);
+
   useEffect(() => {
-    const handleResize = () => {
-      if (artwork?.width && artwork?.height) {
-        const dimensions = calculateImageDimensions(
-          artwork.width,
-          artwork.height,
-        );
-        setImageDimensions(dimensions);
+    const checkFavoriteStatus = async () => {
+      if (session?.user?.id) {
+        const status = await checkIsFavorite(session.user.id, Number(params.id));
+        setIsFavorite(status);
       }
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [artwork, calculateImageDimensions]);
+    void checkFavoriteStatus();
+  }, [session?.user?.id, params.id]);
+
+  // Handle keyboard events for accessibility
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isImageZoomed) {
+        setIsImageZoomed(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isImageZoomed]);
 
   if (isLoading) {
     return (
@@ -149,9 +230,9 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-6 w-1/2" />
             <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-4 w-full" />
+              ))}
             </div>
           </div>
         </div>
@@ -166,18 +247,40 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           <h2 className="mb-2 text-xl font-semibold text-red-600">
             {error || "Artwork Not Found"}
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-gray-600">
             {error
               ? "Please try again later."
               : "The artwork you're looking for doesn't exist or has been removed."}
           </p>
-          <Button onClick={() => router.back()} className="mt-4">
+          <Button
+            onClick={() => router.back()}
+            className="mt-4"
+            aria-label="Go back to previous page"
+          >
             Go Back
           </Button>
         </Card>
       </div>
     );
   }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: artwork.title,
+          text: `Check out "${artwork.title}" by ${artwork.artistName}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.error("Error sharing:", err);
+      }
+    } else {
+      // Fallback to copying URL
+      await navigator.clipboard.writeText(window.location.href);
+      // You might want to show a toast notification here
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
@@ -187,70 +290,32 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             onClick={() => router.back()}
             variant="ghost"
             className="gap-2"
+            aria-label="Go back to previous page"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={handleShare}
+            aria-label="Share artwork"
+          >
             <Share2 className="h-4 w-4" />
             Share
           </Button>
         </div>
 
         <div className="grid gap-12 lg:grid-cols-2">
-          {/* Image Section */}
           <div ref={containerRef} className="relative">
-            <Card
-              className={`overflow-hidden bg-black/5 backdrop-blur-sm ${isImageZoomed ? "fixed inset-4 z-50 flex items-center justify-center bg-black/90" : ""}`}
-            >
-              <div
-                className={`relative flex items-center justify-center ${isImageZoomed ? "h-full w-full" : ""}`}
-                onClick={() => setIsImageZoomed(!isImageZoomed)}
-              >
-                {artwork.image && (
-                  <Image
-                    src={artwork.image}
-                    alt={artwork.title || "Artwork"}
-                    width={
-                      isImageZoomed
-                        ? (artwork.width ?? 800)
-                        : imageDimensions.width || 800
-                    }
-                    height={
-                      isImageZoomed
-                        ? (artwork.height ?? 600)
-                        : imageDimensions.height || 600
-                    }
-                    className={`object-contain transition-transform duration-200 ${
-                      isImageZoomed ? "max-h-full max-w-full" : ""
-                    }`}
-                    priority
-                  />
-                )}
-              </div>
-              <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Badge variant="secondary" className="gap-1">
-                      <Ruler className="h-3 w-3" />
-                      {artwork.width} x {artwork.height}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setIsImageZoomed(!isImageZoomed)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    {isImageZoomed ? "Exit Fullscreen" : "View Fullscreen"}
-                  </Button>
-                </div>
-              </div>
-            </Card>
+            <ImageViewer
+              artwork={artwork}
+              isZoomed={isImageZoomed}
+              onToggleZoom={() => setIsImageZoomed(!isImageZoomed)}
+              dimensions={dimensions}
+            />
           </div>
 
-          {/* Details Section */}
           <ScrollArea className="h-[calc(100vh-8rem)]">
             <div className="space-y-8 pr-4">
               <div>
@@ -261,10 +326,12 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
                   by {artwork.artistName}
                 </h2>
               </div>
+
               <div className="flex gap-2">
                 <FavoriteButton artworkId={artwork.contentId} />
                 <AddToCollectionButton artworkId={artwork.contentId} />
               </div>
+
               <div className="flex flex-wrap gap-2">
                 {artwork.style && (
                   <Badge variant="secondary" className="gap-1">
@@ -297,34 +364,26 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
 
               <div className="grid gap-6">
                 <div className="grid gap-6 sm:grid-cols-2">
-                  {artwork.genre && (
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                      <h4 className="mb-2 font-medium text-gray-500">Genre</h4>
-                      <p>{artwork.genre}</p>
-                    </div>
-                  )}
-                  {artwork.technique && (
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                      <h4 className="mb-2 font-medium text-gray-500">
-                        Technique
-                      </h4>
-                      <p>{artwork.technique}</p>
-                    </div>
-                  )}
-                  {artwork.material && (
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                      <h4 className="mb-2 font-medium text-gray-500">
-                        Material
-                      </h4>
-                      <p>{artwork.material}</p>
-                    </div>
-                  )}
-                  {artwork.period && (
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                      <h4 className="mb-2 font-medium text-gray-500">Period</h4>
-                      <p>{artwork.period}</p>
-                    </div>
-                  )}
+                  <DetailCard
+                    title="Genre"
+                    content={artwork.genre}
+                    icon={<Tag className="h-4 w-4" />}
+                  />
+                  <DetailCard
+                    title="Technique"
+                    content={artwork.technique}
+                    icon={<Brush className="h-4 w-4" />}
+                  />
+                  <DetailCard
+                    title="Material"
+                    content={artwork.material}
+                    icon={<Tag className="h-4 w-4" />}
+                  />
+                  <DetailCard
+                    title="Period"
+                    content={artwork.period}
+                    icon={<Calendar className="h-4 w-4" />}
+                  />
                 </div>
               </div>
 
@@ -352,12 +411,10 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           </ScrollArea>
         </div>
       </div>
+
       <div className="container mx-auto mt-16 px-4">
         <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
-        <ArtworkRecommendations
-          limit={6}
-          artistId={artwork.artistContentId}
-        />
+        <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
       </div>
     </div>
   );

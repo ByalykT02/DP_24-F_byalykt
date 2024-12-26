@@ -1,7 +1,4 @@
 "use server";
-import { db } from "~/server/db";
-import { artists, artworks } from "~/server/db/schema";
-import { ilike, or, eq } from "drizzle-orm";
 import { WikiArtSearchResult } from "~/lib/types/artwork";
 
 const API_BASE_URL = "https://www.wikiart.org/en";
@@ -13,7 +10,7 @@ const REQUEST_CONFIG = {
   next: { revalidate: 3600 }, // Cache for 1 hour
 } as const;
 
-interface SearchResults {
+export interface SearchResults {
   artworks: {
     contentId: number;
     title: string;
@@ -25,6 +22,7 @@ interface SearchResults {
   artists: {
     contentId: number;
     artistName: string;
+    url: string | undefined;
     type: 'artist';
   }[];
 }
@@ -56,16 +54,22 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 
 function processSearchResults(results: WikiArtSearchResult[]): SearchResults {
   // Create a Map to store unique artists
-  const artistsMap = new Map<number, { contentId: number; artistName: string; }>();
+  const artistsMap = new Map<number, { contentId: number; artistName: string; url: string | undefined }>();
 
   // Process artworks and collect unique artists
   const artworks = results.map(result => {
     // Add artist to map if not already present
     if (!artistsMap.has(result.artistContentId)) {
+      const urlPart = result.image
+        .replace(/https:\/\/uploads\d+\.wikiart\.org\/(?:\d+\/)?images\//, "")
+        .split("/")[0];
+    
       artistsMap.set(result.artistContentId, {
         contentId: result.artistContentId,
         artistName: result.artistName,
+        url: urlPart === "https:" ? result.image.replace(/https:\/\/uploads\d+\.wikiart\.org\/(?:\d+\/)?images\//, "").split("/")[0] : urlPart, // Default to empty string if URL part is invalid
       });
+      console.log(result.image)
     }
 
     return {

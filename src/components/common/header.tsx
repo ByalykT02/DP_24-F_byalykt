@@ -1,6 +1,6 @@
 "use client";
+
 import Link from "next/link";
-import { Input } from "~/components/ui/input";
 import { Search, Menu } from "lucide-react";
 import { Button } from "../ui/button";
 import { LoginRouteButton } from "./login-route-button";
@@ -8,7 +8,7 @@ import { UserMenu } from "./user-menu";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SearchCommand } from "../search/search-commands";
+import { SearchPopover } from "../search/search-commands";
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -19,13 +19,13 @@ export default function Header() {
       router.refresh();
     }
   }, [status, router]);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="text-xl font-bold">
           GalleryGlobe
         </Link>
-
         <nav className="hidden items-center gap-6 md:flex">
           <Link
             href="/artworks"
@@ -46,13 +46,10 @@ export default function Header() {
             About
           </Link>
         </nav>
-
         <div className="flex items-center gap-4">
-          <div className="relative hidden md:flex">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <SearchCommand />
+          <div className="relative hidden w-full max-w-sm md:flex">
+            <SearchPopover />
           </div>
-
           {status === "loading" ? (
             <Button variant="outline" size="sm" disabled>
               Loading...
@@ -66,7 +63,6 @@ export default function Header() {
               </Button>
             </LoginRouteButton>
           )}
-
           <Button className="md:hidden" variant="ghost" size="icon">
             <Menu className="h-5 w-5" />
           </Button>
