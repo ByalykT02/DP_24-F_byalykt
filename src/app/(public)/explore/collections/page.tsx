@@ -15,7 +15,8 @@ export default function ExploreCollectionsPage() {
   useEffect(() => {
     const loadCollections = async () => {
       const data = await getPublicCollections();
-      setCollections(data);
+      setCollections(data.data ?? []);
+      console.log(data.data)
       setIsLoading(false);
     };
 

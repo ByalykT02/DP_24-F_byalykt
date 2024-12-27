@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { 
-  Settings, 
-  Share2, 
-  Trash2, 
+import {
+  Settings,
+  Share2,
+  Trash2,
   ArrowLeft,
   Globe,
   Lock,
   MoreHorizontal,
-  FolderEdit 
+  FolderEdit,
 } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -35,12 +35,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { 
-  getCollection, 
+import {
+  getCollection,
   deleteCollection,
-  removeFromCollection 
+  removeFromCollection,
 } from "~/server/actions/collections";
 import { EditCollectionDialog } from "~/components/collections/edit-collection-dialog";
+import { CollectionWithDetails } from "~/lib/types/collection";
 
 interface CollectionPageProps {
   params: {
@@ -48,70 +49,144 @@ interface CollectionPageProps {
   };
 }
 
+interface CollectionItem {
+  artwork: {
+    contentId: number;
+  };
+}
+
+type CollectionState = (CollectionWithDetails & { items: CollectionItem[] }) | null;
+
 export default function CollectionPage({ params }: CollectionPageProps) {
   const { data: session } = useSession();
   const router = useRouter();
-  const [collection, setCollection] = useState<any>(null);
+  const [collection, setCollection] = useState<CollectionState>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadCollection = useCallback(async () => {
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const collectionId = parseInt(params.id);
+      if (isNaN(collectionId)) {
+        throw new Error("Invalid collection ID");
+      }
+
+      const response = await getCollection(session.user.id, collectionId);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error ?? "Failed to load collection");
+      }
+
+      setCollection(response.data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load collection");
+      setCollection(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session?.user?.id, params.id]);
 
   useEffect(() => {
-    const loadCollection = async () => {
-      if (!session?.user?.id) return;
-      
-      const data = await getCollection(session.user.id, parseInt(params.id));
-      if (!data) {
-        router.push("/collections");
-        return;
-      }
-      
-      setCollection(data);
-      setIsLoading(false);
-    };
-
     void loadCollection();
-  }, [session?.user?.id, params.id, router]);
+  }, [loadCollection]);
 
   const handleDelete = async () => {
     if (!session?.user?.id || !collection) return;
 
-    const result = await deleteCollection(session.user.id, collection.id);
-    if (result.success) {
+    try {
+      const result = await deleteCollection(session.user.id, collection.id);
+      
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to delete collection");
+      }
+
       router.push("/collections");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete collection");
     }
   };
 
   const handleRemoveArtwork = async (artworkId: number) => {
     if (!session?.user?.id || !collection) return;
 
-    const result = await removeFromCollection(
-      session.user.id,
-      collection.id,
-      artworkId
-    );
+    try {
+      const result = await removeFromCollection(
+        session.user.id,
+        collection.id,
+        artworkId
+      );
 
-    if (result.success) {
-      setCollection(prev => ({
-        ...prev,
-        items: prev.items.filter((item: any) => item.artwork.contentId !== artworkId)
-      }));
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to remove artwork");
+      }
+
+      setCollection((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.filter(
+            (item) => item.artwork.contentId !== artworkId
+          ),
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove artwork");
     }
   };
 
-  const handleCollectionUpdated = (updatedCollection: any) => {
-    setCollection(prev => ({
-      ...prev,
-      ...updatedCollection
-    }));
-  };
+  const handleCollectionUpdated = useCallback((updatedCollection: Partial<CollectionWithDetails>) => {
+    setCollection((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        ...updatedCollection,
+      };
+    });
+    setIsEditDialogOpen(false);
+  }, []);
 
   if (isLoading) {
     return <Loading />;
   }
 
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-8 text-center">
+          <p className="text-destructive">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => void loadCollection()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (!collection) {
-    return null;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">Collection not found</p>
+          <Link href="/collections">
+            <Button variant="outline" className="mt-4">
+              Back to Collections
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -141,9 +216,7 @@ export default function CollectionPage({ params }: CollectionPageProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setIsEditDialogOpen(true)}
-                >
+                <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
                   <FolderEdit className="mr-2 h-4 w-4" />
                   Edit Collection
                 </DropdownMenuItem>
@@ -175,7 +248,8 @@ export default function CollectionPage({ params }: CollectionPageProps) {
             </p>
           )}
           <p className="mt-2 text-sm text-muted-foreground">
-            {collection.items.length} {collection.items.length === 1 ? 'artwork' : 'artworks'}
+            {collection.items.length}{" "}
+            {collection.items.length === 1 ? "artwork" : "artworks"}
           </p>
         </div>
       </div>
@@ -183,7 +257,9 @@ export default function CollectionPage({ params }: CollectionPageProps) {
       {/* Artworks Grid */}
       {collection.items.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No artworks in this collection</p>
+          <p className="text-muted-foreground">
+            No artworks in this collection
+          </p>
           <Button
             variant="outline"
             onClick={() => router.push("/artworks")}
@@ -195,14 +271,14 @@ export default function CollectionPage({ params }: CollectionPageProps) {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {collection.items.map((item: any) => (
-            <Card key={item.id} className="group relative overflow-hidden">
+            <Card key={item.id} className="group relative overflow-hidden transition-transform hover:scale-[1.02]">
               <Link href={`/artworks/${item.artwork.contentId}`}>
                 <div className="relative aspect-[3/4]">
                   <Image
                     src={item.artwork.image}
                     alt={item.artwork.title}
                     fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="object-cover"
                   />
                 </div>
                 <CardContent className="p-4">
@@ -244,8 +320,8 @@ export default function CollectionPage({ params }: CollectionPageProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Collection</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this collection? This action cannot
-              be undone.
+              Are you sure you want to delete this collection? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

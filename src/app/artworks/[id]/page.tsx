@@ -202,7 +202,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     const checkFavoriteStatus = async () => {
       if (session?.user?.id) {
         const status = await checkIsFavorite(session.user.id, Number(params.id));
-        setIsFavorite(status);
+        setIsFavorite(status.success);
       }
     };
 

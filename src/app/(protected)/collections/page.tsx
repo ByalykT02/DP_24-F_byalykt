@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Loading } from "~/components/ui/loading";
@@ -10,31 +10,84 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { CreateCollectionDialog } from "~/components/collections/create-collection-dialog";
 import { getUserCollections } from "~/server/actions/collections";
+import { ApiResponse, CollectionWithDetails } from "~/lib/types/collection";
+
+export const dynamic = "force-dynamic";
 
 export default function CollectionsPage() {
   const { data: session } = useSession();
-  const [collections, setCollections] = useState<any[]>([]);
+  const [collections, setCollections] = useState<CollectionWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const loadCollections = async () => {
-      if (session?.user?.id) {
-        const data = await getUserCollections(session.user.id);
-        setCollections(data);
-        setIsLoading(false);
-      }
-    };
+  const loadCollections = useCallback(async () => {
+    if (!session?.user?.id) return;
 
-    void loadCollections();
+    try {
+      const response = await getUserCollections(session.user.id);
+
+      if (!response.success) {
+        setError(response.error ?? "Failed to load collections");
+        setCollections([]);
+      } else {
+        const validCollections = (response.data ?? []).filter(
+          (c): c is CollectionWithDetails => c != null,
+        );
+        setCollections(validCollections);
+        setError(null);
+      }
+    } catch (err) {
+      setError("Failed to load collections");
+      setCollections([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [session?.user?.id]);
 
-  const handleCollectionCreated = (newCollection: any) => {
-    setCollections((prev) => [...prev, newCollection]);
-  };
+  useEffect(() => {
+    void loadCollections();
+  }, [loadCollections]);
+
+  const handleCollectionCreated = useCallback(
+    (newCollection: CollectionWithDetails) => {
+      if (newCollection) {
+        // Immediately update the local state with the new collection
+        setCollections((prev) => {
+          // Check if the collection already exists to avoid duplicates
+          const exists = prev.some((c) => c.id === newCollection.id);
+          if (exists) {
+            return prev.map((c) =>
+              c.id === newCollection.id ? newCollection : c,
+            );
+          }
+          return [...prev, newCollection];
+        });
+        setIsDialogOpen(false);
+      }
+    },
+    [],
+  );
 
   if (isLoading) {
     return <Loading />;
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-8 text-center">
+          <p className="text-destructive">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -63,6 +116,7 @@ export default function CollectionsPage() {
             variant="outline"
             onClick={() => setIsDialogOpen(true)}
             className="mt-4"
+            disabled={!session?.user?.id}
           >
             Create your first collection
           </Button>
@@ -71,8 +125,8 @@ export default function CollectionsPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {collections.map((collection) => (
             <Link
-              key={collection.id}
-              href={`/collections/${collection.id}`}
+              key={collection?.id}
+              href={`/collections/${collection?.id}`}
               className="transition-transform hover:scale-[1.02]"
             >
               <Card className="overflow-hidden">
@@ -83,6 +137,7 @@ export default function CollectionsPage() {
                       alt={collection.name}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">
@@ -95,7 +150,16 @@ export default function CollectionsPage() {
                     {collection.name}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {collection.itemCount} {collection.itemCount === 1 ? 'item' : 'items'}
+                    {collection.itemCount}
+                    {collection.itemCount === 1 ? " item" : " items"}
+                  </p>
+                  {collection.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                      {collection.description}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {collection.isPublic ? "Public" : "Private"}
                   </p>
                 </CardContent>
               </Card>

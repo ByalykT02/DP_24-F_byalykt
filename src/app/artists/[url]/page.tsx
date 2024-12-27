@@ -6,8 +6,6 @@ import { Artwork } from "~/lib/types/artwork";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { Separator } from "~/components/ui/separator";
 import { Loading } from "~/components/ui/loading";
 import {
   Share2,
