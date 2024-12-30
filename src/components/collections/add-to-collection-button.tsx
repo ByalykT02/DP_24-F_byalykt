@@ -11,17 +11,25 @@ import {
 import { FolderPlus } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { getUserCollections, addToCollection } from "~/server/actions/collections";
+import {
+  getUserCollections,
+  addToCollection,
+} from "~/server/actions/collections";
+import { CollectionWithDetails } from "~/lib/types/collection";
 
 interface AddToCollectionButtonProps {
   artworkId: number;
 }
 
-export function AddToCollectionButton({ artworkId }: AddToCollectionButtonProps) {
+export function AddToCollectionButton({
+  artworkId,
+}: AddToCollectionButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [collections, setCollections] = useState<any[]>([]);
+  const [collections, setCollections] = useState<CollectionWithDetails[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
 
   const handleClick = async () => {
@@ -29,12 +37,25 @@ export function AddToCollectionButton({ artworkId }: AddToCollectionButtonProps)
       router.push("/auth/login");
       return;
     }
+    try {
+      setIsDialogOpen(true);
+      setIsLoading(true);
+      const response = await getUserCollections(session.user.id);
 
-    setIsDialogOpen(true);
-    setIsLoading(true);
-    const userCollections = await getUserCollections(session.user.id);
-    setCollections(userCollections);
-    setIsLoading(false);
+      if (!response.success) {
+        setError(response.error ?? "Failed to load collections");
+        setCollections([]);
+      } else {
+        const validCollections = response.data ?? [];
+        setCollections(validCollections);
+        setError(null);
+      }
+    } catch (err) {
+      setError("Failed to load collections");
+      setCollections([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAddToCollection = async (collectionId: number) => {
@@ -43,12 +64,11 @@ export function AddToCollectionButton({ artworkId }: AddToCollectionButtonProps)
     const result = await addToCollection(
       session.user.id,
       collectionId,
-      artworkId
+      artworkId,
     );
 
     if (result.success) {
       setIsDialogOpen(false);
-      // Optionally show a success toast
     }
   };
 
@@ -69,6 +89,8 @@ export function AddToCollectionButton({ artworkId }: AddToCollectionButtonProps)
           <DialogHeader>
             <DialogTitle>Add to Collection</DialogTitle>
           </DialogHeader>
+          
+          {error && <div className="text-red-500">{error}</div>}
           
           <div className="space-y-4">
             {isLoading ? (

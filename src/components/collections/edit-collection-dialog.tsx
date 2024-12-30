@@ -69,7 +69,7 @@ export function EditCollectionDialog({
       });
 
       if (result.success) {
-        onCollectionUpdated(result.collection);
+        onCollectionUpdated(result.data);
         onOpenChange(false);
       }
     } catch (error) {

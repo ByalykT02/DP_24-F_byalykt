@@ -153,7 +153,6 @@ export const artworks = createTable("artwork", {
   dictionaries: json("dictionaries"),
   width: decimal("width", { precision: 6, scale: 2 }),
   height: decimal("height", { precision: 6, scale: 2 }),
-  diameter: decimal("diameter", { precision: 6, scale: 2 }),
   material: varchar("material", { length: 255 }),
   technique: varchar("technique", { length: 255 }),
   location: varchar("location", { length: 255 }),
@@ -182,6 +181,18 @@ export const userPreferences = createTable("user_preferences", {
   updatedAt: timestamp("updated_at"),
 });
 
+//History
+export const viewingHistory = createTable("viewing_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  artworkId: integer("artwork_id")
+    .notNull()
+    .references(() => artworks.contentId),
+  viewedAt: timestamp("viewed_at").defaultNow(),
+});
+
 // User Collections
 export const userCollections = createTable("user_collection", {
   id: serial("id").primaryKey(),
@@ -193,18 +204,6 @@ export const userCollections = createTable("user_collection", {
   isPublic: boolean("is_public").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
-});
-
-//History
-export const viewingHistory = createTable("viewing_history", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 255 })
-    .notNull()
-    .references(() => users.id),
-  artworkId: integer("artwork_id")
-    .notNull()
-    .references(() => artworks.contentId),
-  viewedAt: timestamp("viewed_at").defaultNow(),
 });
 
 // Collection Items

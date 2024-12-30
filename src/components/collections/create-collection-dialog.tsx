@@ -67,7 +67,7 @@ export function CreateCollectionDialog({
       });
 
       if (result.success) {
-        onCollectionCreated(result.collection);
+        onCollectionCreated(result.data);
         form.reset();
         onOpenChange(false);
       }

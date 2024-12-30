@@ -26,22 +26,14 @@ const FALLBACK_ARTWORK: ArtworkDetailed = {
   style: "Symbolism",
   tags: "priests-and-sacraments, Sky",
   dictionaries: [482, 494],
-  sizeX: 480.0,
-  sizeY: 405.0,
-  diameter: null,
   width: 1983,
   height: 1689,
   material: null,
   technique: null,
   location: null,
   period: null,
-  serie: null,
-  galleryName: "Mucha Museum, Prague, Czech Republic",
   image:
     "https://uploads7.wikiart.org/images/alphonse-mucha/holy-mount-athos-1926.jpg",
-  auction: null,
-  yearOfTrade: null,
-  lastPrice: null,
   description: null,
 };
 
