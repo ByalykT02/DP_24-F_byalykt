@@ -20,21 +20,28 @@ import { logging } from "~/utils/logger";
 export async function createCollection(
   params: CreateCollectionParams,
 ): Promise<ApiResponse<CollectionWithDetails>> {
-  const logger = logging.child({ 
-    operation: 'createCollection', 
-    userId: params.userId 
+  const logger = logging.child({
+    operation: "createCollection",
+    userId: params.userId,
   });
-  
-  logger.info('Creating new collection', { collectionName: params.name });
-  
+
+  logger.info("Creating new collection", { collectionName: params.name });
+
   try {
     const [collection] = await db
       .insert(userCollections)
       .values(params)
       .returning();
 
-    logger.info('Collection created successfully', { collectionId: collection.id });
-    
+    if (!collection) {
+      logger.warn("Failed to create collection");
+      return { success: false, error: "Failed to create collection" };
+    } else {
+      logger.info("Collection created successfully", {
+        collectionId: collection.id,
+      });
+    }
+
     return {
       success: true,
       data: {
@@ -44,7 +51,11 @@ export async function createCollection(
       },
     };
   } catch (error) {
-    logging.error('Failed to create collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to create collection", error);
+    } else {
+      logging.error("Failed to create collection", { message: String(error) });
+    }
     return { success: false, error: "Failed to create collection" };
   }
 }
@@ -52,13 +63,13 @@ export async function createCollection(
 export async function getUserCollections(
   userId: string,
 ): Promise<ApiResponse<CollectionWithDetails[]>> {
-  const logger = logging.child({ 
-    operation: 'getUserCollections', 
-    userId 
+  const logger = logging.child({
+    operation: "getUserCollections",
+    userId,
   });
-  
-  logger.info('Fetching user collections');
-  
+
+  logger.info("Fetching user collections");
+
   try {
     const collections = await db
       .select({
@@ -72,7 +83,7 @@ export async function getUserCollections(
       .where(eq(userCollections.userId, userId))
       .orderBy(userCollections.createdAt);
 
-    logger.debug('Retrieved base collections', { count: collections.length });
+    logger.debug("Retrieved base collections", { count: collections.length });
 
     const collectionsWithDetails = await Promise.all(
       collections.map(async (collection) => {
@@ -101,8 +112,8 @@ export async function getUserCollections(
       }),
     );
 
-    logger.info('Successfully retrieved collections with details', {
-      collectionCount: collectionsWithDetails.length
+    logger.info("Successfully retrieved collections with details", {
+      collectionCount: collectionsWithDetails.length,
     });
 
     return {
@@ -110,7 +121,13 @@ export async function getUserCollections(
       data: collectionsWithDetails,
     };
   } catch (error) {
-    logging.error('Failed to get user collections', error);
+    if (error instanceof Error) {
+      logging.error("Failed to get user collections", error);
+    } else {
+      logging.error("Failed to get user collections", {
+        message: String(error),
+      });
+    }
     return {
       success: false,
       error: "Failed to get user collections",
@@ -119,17 +136,17 @@ export async function getUserCollections(
 }
 
 export async function getCollection(
-  userId: string | null,
+  userId: string,
   collectionId: number,
-): Promise<ApiResponse<CollectionWithItems | null>> {
-  const logger = logging.child({ 
-    operation: 'getCollection', 
-    userId, 
-    collectionId 
+): Promise<ApiResponse<CollectionWithItems>> {
+  const logger = logging.child({
+    operation: "getCollection",
+    userId,
+    collectionId,
   });
-  
-  logger.info('Fetching collection details');
-  
+
+  logger.info("Fetching collection details");
+
   try {
     const collection = await db
       .select({
@@ -145,15 +162,15 @@ export async function getCollection(
       .limit(1);
 
     if (!collection.length) {
-      logger.warn('Collection not found');
+      logger.warn("Collection not found");
       return { success: false, error: "Collection not found" };
     }
 
     const isOwner = userId === collection[0]?.userId;
     if (!isOwner && !collection[0]?.isPublic) {
-      logger.warn('Access denied to private collection', { 
+      logger.warn("Access denied to private collection", {
         requestedBy: userId,
-        collectionOwner: collection[0]?.userId 
+        collectionOwner: collection[0]?.userId,
       });
       return { success: false, error: "Access denied" };
     }
@@ -173,12 +190,22 @@ export async function getCollection(
       .innerJoin(artists, eq(artworks.artistContentId, artists.contentId))
       .where(eq(collectionItems.collectionId, collectionId));
 
-    logger.info('Collection retrieved successfully', { 
-      itemCount: items.length,
-      isPublic: collection[0]?.isPublic,
-      isOwner
-    });
+    if (!items.length) {
+      logger.warn("Collection has no items", { collectionId });
+    } else {
+      logger.info("Collection retrieved successfully", {
+        itemCount: items.length,
+        isPublic: collection[0]?.isPublic,
+        isOwner,
+      });
+    }
 
+    const filteredItems = items.filter((item) => item.id !== null);
+
+    if (!collection[0]) {
+      logger.warn("Collection not found");
+      return { success: false, error: "Collection not found" };
+    }
     const previewImage = items[0]?.artwork?.image || null;
     return {
       success: true,
@@ -186,12 +213,16 @@ export async function getCollection(
         ...collection[0],
         previewImage,
         itemCount: items.length,
-        items,
+        items: filteredItems,
         isOwner,
       },
     };
   } catch (error) {
-    logging.error('Failed to get collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to get collection", error);
+    } else {
+      logging.error("Failed to get collection", { message: String(error) });
+    }
     return { success: false, error: "Failed to get collection" };
   }
 }
@@ -199,10 +230,10 @@ export async function getCollection(
 export async function getPublicCollections(): Promise<
   ApiResponse<CollectionWithDetails[]>
 > {
-  const logger = logging.child({ operation: 'getPublicCollections' });
-  
-  logger.info('Fetching public collections');
-  
+  const logger = logging.child({ operation: "getPublicCollections" });
+
+  logger.info("Fetching public collections");
+
   try {
     const collections = await db
       .select({
@@ -211,6 +242,7 @@ export async function getPublicCollections(): Promise<
         description: userCollections.description,
         userId: userCollections.userId,
         createdAt: userCollections.createdAt,
+        isPublic: userCollections.isPublic,
         user: {
           name: users.name,
         },
@@ -220,8 +252,8 @@ export async function getPublicCollections(): Promise<
       .where(eq(userCollections.isPublic, true))
       .orderBy(desc(userCollections.createdAt));
 
-    logger.debug('Retrieved base public collections', { 
-      count: collections.length 
+    logger.debug("Retrieved base public collections", {
+      count: collections.length,
     });
 
     const collectionsWithDetails = await Promise.all(
@@ -251,13 +283,19 @@ export async function getPublicCollections(): Promise<
       }),
     );
 
-    logger.info('Successfully retrieved public collections with details', {
-      collectionCount: collectionsWithDetails.length
+    logger.info("Successfully retrieved public collections with details", {
+      collectionCount: collectionsWithDetails.length,
     });
 
     return { success: true, data: collectionsWithDetails };
   } catch (error) {
-    logging.error('Failed to get public collections', error);
+    if (error instanceof Error) {
+      logging.error("Failed to get public collections", error);
+    } else {
+      logging.error("Failed to get public collections", {
+        message: String(error),
+      });
+    }
     return { success: false, error: "Failed to get public collections" };
   }
 }
@@ -269,17 +307,17 @@ export async function updateCollection(params: {
   description?: string;
   isPublic: boolean | null;
 }): Promise<ApiResponse<CollectionWithDetails>> {
-  const logger = logging.child({ 
-    operation: 'updateCollection',
+  const logger = logging.child({
+    operation: "updateCollection",
     userId: params.userId,
-    collectionId: params.collectionId
+    collectionId: params.collectionId,
   });
-  
-  logger.info('Updating collection', {
+
+  logger.info("Updating collection", {
     name: params.name,
-    isPublic: params.isPublic
+    isPublic: params.isPublic,
   });
-  
+
   try {
     const [collection] = await db
       .update(userCollections)
@@ -297,7 +335,7 @@ export async function updateCollection(params: {
       .returning();
 
     if (!collection) {
-      logger.warn('Collection not found or user not authorized');
+      logger.warn("Collection not found or user not authorized");
       return { success: false, error: "Collection not found" };
     }
 
@@ -315,8 +353,8 @@ export async function updateCollection(params: {
       .from(collectionItems)
       .where(eq(collectionItems.collectionId, collection.id));
 
-    logger.info('Collection updated successfully', {
-      collectionId: collection.id
+    logger.info("Collection updated successfully", {
+      collectionId: collection.id,
     });
 
     return {
@@ -328,7 +366,11 @@ export async function updateCollection(params: {
       },
     };
   } catch (error) {
-    logging.error('Failed to update collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to update collection", error);
+    } else {
+      logging.error("Failed to update collection", { message: String(error) });
+    }
     return { success: false, error: "Failed to update collection" };
   }
 }
@@ -338,15 +380,15 @@ export async function addToCollection(
   collectionId: number,
   artworkId: number,
 ): Promise<ApiResponse<void>> {
-  const logger = logging.child({ 
-    operation: 'addToCollection',
+  const logger = logging.child({
+    operation: "addToCollection",
     userId,
     collectionId,
-    artworkId
+    artworkId,
   });
-  
-  logger.info('Adding artwork to collection');
-  
+
+  logger.info("Adding artwork to collection");
+
   try {
     const collection = await db
       .select()
@@ -360,7 +402,7 @@ export async function addToCollection(
       .limit(1);
 
     if (!collection.length) {
-      logger.warn('Collection not found or user not authorized');
+      logger.warn("Collection not found or user not authorized");
       return { success: false, error: "Collection not found" };
     }
 
@@ -376,7 +418,7 @@ export async function addToCollection(
       .limit(1);
 
     if (existing.length) {
-      logger.warn('Artwork already exists in collection', { artworkId });
+      logger.warn("Artwork already exists in collection", { artworkId });
       return { success: false, error: "Artwork already in collection" };
     }
 
@@ -385,10 +427,14 @@ export async function addToCollection(
       artworkId,
     });
 
-    logger.info('Artwork added to collection successfully');
+    logger.info("Artwork added to collection successfully");
     return { success: true };
   } catch (error) {
-    logging.error('Failed to add to collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to add to collection", error);
+    } else {
+      logging.error("Failed to add to collection", { message: String(error) });
+    }
     return { success: false, error: "Failed to add to collection" };
   }
 }
@@ -398,15 +444,15 @@ export async function removeFromCollection(
   collectionId: number,
   artworkId: number,
 ): Promise<ApiResponse<void>> {
-  const logger = logging.child({ 
-    operation: 'removeFromCollection',
+  const logger = logging.child({
+    operation: "removeFromCollection",
     userId,
     collectionId,
-    artworkId
+    artworkId,
   });
-  
-  logger.info('Removing artwork from collection');
-  
+
+  logger.info("Removing artwork from collection");
+
   try {
     const collection = await db
       .select()
@@ -420,7 +466,7 @@ export async function removeFromCollection(
       .limit(1);
 
     if (!collection.length) {
-      logger.warn('Collection not found or user not authorized');
+      logger.warn("Collection not found or user not authorized");
       return { success: false, error: "Collection not found" };
     }
 
@@ -433,10 +479,16 @@ export async function removeFromCollection(
         ),
       );
 
-    logger.info('Artwork removed from collection successfully');
+    logger.info("Artwork removed from collection successfully");
     return { success: true };
   } catch (error) {
-    logging.error('Failed to remove from collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to remove from collection", error);
+    } else {
+      logging.error("Failed to remove from collection", {
+        message: String(error),
+      });
+    }
     return { success: false, error: "Failed to remove from collection" };
   }
 }
@@ -445,14 +497,14 @@ export async function deleteCollection(
   userId: string,
   collectionId: number,
 ): Promise<ApiResponse<void>> {
-  const logger = logging.child({ 
-    operation: 'deleteCollection',
+  const logger = logging.child({
+    operation: "deleteCollection",
     userId,
-    collectionId
+    collectionId,
   });
-  
-  logger.info('Deleting collection');
-  
+
+  logger.info("Deleting collection");
+
   try {
     const collection = await db
       .select()
@@ -466,7 +518,7 @@ export async function deleteCollection(
       .limit(1);
 
     if (!collection.length) {
-      logger.warn('Collection not found or user not authorized');
+      logger.warn("Collection not found or user not authorized");
       return { success: false, error: "Collection not found" };
     }
 
@@ -478,10 +530,14 @@ export async function deleteCollection(
       .delete(userCollections)
       .where(eq(userCollections.id, collectionId));
 
-    logger.info('Collection deleted successfully');
+    logger.info("Collection deleted successfully");
     return { success: true };
   } catch (error) {
-    logging.error('Failed to delete collection', error);
+    if (error instanceof Error) {
+      logging.error("Failed to delete collection", error);
+    } else {
+      logging.error("Failed to delete collection", { message: String(error) });
+    }
     return { success: false, error: "Failed to delete collection" };
   }
 }

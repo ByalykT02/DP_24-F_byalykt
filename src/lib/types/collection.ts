@@ -1,10 +1,9 @@
-
 export interface CollectionWithDetails {
   id: number;
   name: string;
   description: string | null;
-  isPublic: boolean;
-  createdAt: Date;
+  isPublic: boolean | null;
+  createdAt: Date | null;
   previewImage: string | null;
   itemCount: number;
 }
@@ -34,4 +33,3 @@ export interface CreateCollectionParams {
   description?: string;
   isPublic: boolean;
 }
-

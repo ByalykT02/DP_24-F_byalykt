@@ -49,25 +49,15 @@ export default function CollectionsPage() {
     void loadCollections();
   }, [loadCollections]);
 
-  const handleCollectionCreated = useCallback(
-    (newCollection: CollectionWithDetails) => {
-      if (newCollection) {
-        // Immediately update the local state with the new collection
-        setCollections((prev) => {
-          // Check if the collection already exists to avoid duplicates
-          const exists = prev.some((c) => c.id === newCollection.id);
-          if (exists) {
-            return prev.map((c) =>
-              c.id === newCollection.id ? newCollection : c,
-            );
-          }
-          return [...prev, newCollection];
-        });
-        setIsDialogOpen(false);
-      }
-    },
-    [],
-  );
+  const handleCollectionCreated = (newCollection: CollectionWithDetails) => {
+      setCollections((prev) => {
+        const exists = prev.some((c) => c.id === newCollection.id);
+        if (exists) {
+          return prev.map((c) => (c.id === newCollection.id ? newCollection : c));
+        }
+        return [...prev, newCollection];
+      });
+    };
 
   if (isLoading) {
     return <Loading />;

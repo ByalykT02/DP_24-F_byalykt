@@ -159,7 +159,7 @@ export const artworks = createTable("artwork", {
   period: varchar("period", { length: 100 }),
   serie: varchar("serie", { length: 255 }),
   galleryName: varchar("gallery_name", { length: 255 }),
-  image: varchar("image", { length: 1000 }),
+  image: varchar("image", { length: 1000 }).notNull(),
   auction: text("auction"),
   yearOfTrade: integer("year_of_trade"),
   lastPrice: decimal("last_price", { precision: 10, scale: 2 }),
