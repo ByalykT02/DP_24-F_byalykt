@@ -3,7 +3,7 @@
 import { desc, eq, and, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { viewingHistory, artworks, artists } from "~/server/db/schema";
-import { ensureArtworkExists } from "./artwork-to-db";
+import { upsertArtwork } from "./artwork-to-db";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { logger } from "~/utils/logger";
 
@@ -17,17 +17,16 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
 
   try {
     // Ensure the artwork exists in the database
-    const artworkResult = await ensureArtworkExists(artwork);
+    const artworkResult = await upsertArtwork(artwork);
+    console.log("artworkResult", artworkResult);
     if (!artworkResult.success) {
       logger.error('Failed to ensure artwork exists', {
         ...logContext,
         error: artworkResult.error,
-        details: artworkResult.details,
       });
       return { 
         success: false, 
         error: 'Failed to ensure artwork exists in database',
-        details: artworkResult.details,
       };
     }
 

@@ -6,11 +6,12 @@ import { eq } from "drizzle-orm";
 import { logger, logging } from "~/utils/logger";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { ApiResponse } from "~/lib/types/collection";
+import { fetchArtistDetails } from "./fetch-artist";
 
 /**
- * Validates artist data
+ * Checks if the artist data is valid
  */
-function validateArtist(data: {
+function isValidArtist(data: {
   contentId: number;
   artistName: string;
   artistUrl: string | null;
@@ -21,9 +22,9 @@ function validateArtist(data: {
 }
 
 /**
- * Validates artwork data
+ * Checks if the artwork data is valid
  */
-function validateArtwork(data: ArtworkDetailed): boolean {
+function isValidArtwork(data: ArtworkDetailed): boolean {
   if (!data.contentId || data.contentId <= 0) return false;
   if (!data.artistContentId || data.artistContentId <= 0) return false;
   if (!data.title || data.title.trim().length === 0) return false;
@@ -34,27 +35,44 @@ function validateArtwork(data: ArtworkDetailed): boolean {
 /**
  * Ensures an artist exists in the database
  */
-async function ensureArtistExists(
+async function upsertArtist(
   artistContentId: number,
   artistName: string,
   artistUrl: string | null,
 ): Promise<ApiResponse<void>> {
   const logger = logging.child({
-    action: "ensureArtistExists",
+    action: "upsertArtist",
     artistContentId,
     artistName,
   });
 
+  // Validate artist data
+  if (!isValidArtist({ contentId: artistContentId, artistName, artistUrl })) {
+    logger.warn("Artist data validation failed", {
+      artistContentId,
+      artistName,
+    });
+    return {
+      success: false,
+      error: "Invalid artist data",
+    };
+  }
+
+  logger.info("Starting upsert process for artist", {
+    artistContentId,
+    artistName,
+    artistUrl,
+  });
+
   try {
-    // Validate artist data
-    if (
-      !validateArtist({ contentId: artistContentId, artistName, artistUrl })
-    ) {
-      logger.warn("Invalid artist data", { artistContentId, artistName });
-      return {
-        success: false,
-        error: "Invalid artist data",
-      };
+    const detailedArtist = await fetchArtistDetails(artistUrl!);
+
+    if (!detailedArtist) {
+      logger.warn("Artist details could not be fetched", { artistUrl });
+    } else {
+      logger.info("Artist details successfully fetched from API", {
+        artistUrl,
+      });
     }
 
     const existingArtist = await db.query.artists.findFirst({
@@ -62,29 +80,36 @@ async function ensureArtistExists(
     });
 
     if (!existingArtist) {
-      logger.info("Creating new artist record");
+      logger.info("No existing artist found. Creating a new record.");
       await db
         .insert(artists)
-        .values({
-          contentId: artistContentId,
-          artistName: artistName,
-          url: artistUrl,
-        })
+        .values(detailedArtist.artist)
         .onConflictDoNothing();
 
-      logger.info("Artist created successfully");
+      logger.info("New artist record created successfully.");
     } else {
-      logger.debug("Artist already exists", {
-        artistId: existingArtist.contentId,
+      logger.info("Artist already exists. Updating the record.", {
+        existingArtistId: existingArtist.contentId,
       });
+
+      await db
+        .update(artists)
+        .set(detailedArtist.artist)
+        .where(eq(artists.contentId, artistContentId));
+
+      logger.info("Artist record updated successfully.");
     }
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to ensure artist exists", error);
+    logger.error("An error occurred during the artist upsert process", {
+      error,
+      artistContentId,
+      artistName,
+    });
     return {
       success: false,
-      error: "Failed to ensure artist exists",
+      error: "Unexpected error occurred",
     };
   }
 }
@@ -93,73 +118,61 @@ async function ensureArtistExists(
  * Ensures an artwork exists in the database
  * Creates or updates both the artwork and associated artist
  */
-export async function ensureArtworkExists(
+export async function upsertArtwork(
   artwork: ArtworkDetailed,
 ): Promise<ApiResponse<{ artworkId: number; title: string }>> {
   const logger = logging.child({
-    action: "ensureArtworkExists",
+    action: "upsertArtwork",
     artworkId: artwork.contentId,
   });
 
+  // Validate artwork data
+  if (!isValidArtwork(artwork)) {
+    logger.warn("Artwork data validation failed", {
+      artworkId: artwork.contentId,
+      title: artwork.title,
+    });
+    return {
+      success: false,
+      error: "Invalid artwork data",
+    };
+  }
+
+  logger.info("Starting upsert process for artwork", { title: artwork.title });
+
   try {
-    // Validate artwork data
-    if (!validateArtwork(artwork)) {
-      logger.warn("Invalid artwork data", {
-        artworkId: artwork.contentId,
-        title: artwork.title,
-      });
-      return {
-        success: false,
-        error: "Invalid artwork data",
-      };
-    }
-
-    logger.info("Ensuring artwork exists", { title: artwork.title });
-
     // Ensure artist exists first
-    const artistResult = await ensureArtistExists(
+    const artistResult = await upsertArtist(
       artwork.artistContentId,
       artwork.artistName,
       artwork.artistUrl,
     );
 
     if (!artistResult.success) {
+      logger.error("Failed to upsert artist for the artwork", {
+        artistContentId: artwork.artistContentId,
+        artistName: artwork.artistName,
+      });
       return {
         success: false,
         error: artistResult.error,
       };
     }
 
-    // Pr
-    
+    logger.info("Artist successfully ensured. Proceeding with artwork upsert.");
 
-    const existingArtwork = await db.query.artworks.findFirst({
-      where: eq(artworks.contentId, artwork.contentId),
+    await db
+      .insert(artworks)
+      .values({ ...artwork, createdAt: new Date() })
+      .onConflictDoUpdate({
+        target: [artworks.contentId],
+        set: artwork,
+      });
+
+    logger.info("Artwork upserted successfully", {
+      artworkId: artwork.contentId,
+      title: artwork.title,
     });
-
-    if (!existingArtwork) {
-      logger.info("Creating new artwork record");
-      await db
-        .insert(artworks)
-        .values({
-          ...artwork,
-          createdAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [artworks.contentId],
-          set: artwork,
-        });
-
-      logger.info("Artwork created successfully");
-    } else {
-      logger.info("Updating existing artwork");
-      await db
-        .update(artworks)
-        .set(artwork)
-        .where(eq(artworks.contentId, artwork.contentId));
-
-      logger.info("Artwork updated successfully");
-    }
 
     return {
       success: true,
@@ -169,7 +182,11 @@ export async function ensureArtworkExists(
       },
     };
   } catch (error) {
-    logger.error("Failed to ensure artwork exists", error);
+    logger.error("An error occurred during the artwork upsert process", {
+      error,
+      artworkId: artwork.contentId,
+      title: artwork.title,
+    });
     return {
       success: false,
       error: "Failed to ensure artwork exists",
