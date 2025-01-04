@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { fetchRandomArtworks } from "~/server/actions/fetch-artworks-random";
+import { fetchRandomArtworks } from "~/server/actions/fetch-artworks";
 
 export default function ArtworksPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);

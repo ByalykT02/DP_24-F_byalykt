@@ -7,7 +7,6 @@ import ArtCategories from "~/components/home/art-categories";
 import Hero from "~/components/home/hero";
 import ArtworkTiles from "~/components/home/arwork-tiles";
 import { fetchArtworks } from "~/server/actions/fetch-artworks-home";
-import { processArtworksToDb } from "~/server/actions/process-artworks";
 
 const MainPage = () => {
   const [results, setResults] = useState<Artwork[]>([]);

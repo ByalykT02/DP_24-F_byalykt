@@ -1,14 +1,11 @@
 import { getWikiArtAuthSession } from "~/lib/wikiart-auth";
 
 export async function fetchWikiArtApi<T>(endpoint: string): Promise<T> {
-  const sessionKey = await getWikiArtAuthSession();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const url = new URL(`https://www.wikiart.org/en${endpoint}`);
-    // Add auth session key to URL
-    url.searchParams.append("authSessionKey", sessionKey);
 
     const response = await fetch(url.toString(), {
       signal: controller.signal,

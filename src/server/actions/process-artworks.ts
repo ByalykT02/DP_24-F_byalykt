@@ -1,7 +1,7 @@
 "use server";
 
 import { fetchArtwork } from "./fetch-artwork";
-import { ensureArtworkExists } from "./artwork-to-db";
+import { upsertArtwork } from "./artwork-to-db";
 import type { Artwork } from "~/lib/types/artwork";
 
 export async function processArtworksToDb(artworks: Artwork[]) {
@@ -11,7 +11,7 @@ export async function processArtworksToDb(artworks: Artwork[]) {
         try {
           const artworkData = await fetchArtwork(String(artwork.contentId));
 
-          const processedArtwork = await ensureArtworkExists(artworkData);
+          const processedArtwork = await upsertArtwork(artworkData);
 
           return processedArtwork;
         } catch (individualError) {

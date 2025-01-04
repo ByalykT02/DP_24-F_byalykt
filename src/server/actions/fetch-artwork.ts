@@ -1,46 +1,42 @@
 import { Artwork, ArtworkDetailed } from "~/lib/types/artwork";
-
-const API_BASE_URL = "https://www.wikiart.org/en";
-const MAX_ARTWORKS = 9;
-
-// Configuration for API requests
-const REQUEST_CONFIG = {
-  headers: {
-    Accept: "application/json",
-    "User-Agent": "Mozilla/5.0 (compatible; ArtGalleryBot/1.0)",
-  },
-  next: { revalidate: 0 }, // Force revalidation on each request
-} as const;
+import { fetchWikiArtApi } from "./fetch-api";
 
 // Fallback artwork data remains unchanged
 const FALLBACK_ARTWORK: ArtworkDetailed = {
-  artistName: "Alphonse Mucha",
   artistUrl: "alphonse-mucha",
-  artistContentId: 227598,
-  contentId: 227658,
-  title: "Holy Mount Athos",
   url: "holy-mount-athos-1926",
-  completitionYear: 1926,
-  yearAsString: "1926",
-  genre: "religious painting",
-  style: "Symbolism",
-  tags: "priests-and-sacraments, Sky",
   dictionaries: [482, 494],
-  width: 1983,
-  height: 1689,
-  material: null,
-  technique: null,
   location: null,
   period: null,
-  image:
-    "https://uploads7.wikiart.org/images/alphonse-mucha/holy-mount-athos-1926.jpg",
+  serie: null,
+  genre: "religious painting",
+  material: null,
+  style: "Symbolism",
+  technique: null,
+  auction: null,
+  yearOfTrade: null,
+  lastPrice: null,
+  galleryName: "Mucha Museum, Prague, Czech Republic",
+  tags: "priests-and-sacraments, Sky",
   description: null,
+  title: "Holy Mount Athos",
+  contentId: 227658,
+  artistContentId: 227598,
+  artistName: "Mucha Alphonse",
+  completitionYear: 1926,
+  yearAsString: "1926",
+  width: "1983",
+  height: "1689",
+  image:
+    "https://uploads7.wikiart.org/images/alphonse-mucha/holy-mount-athos-1926.jpg!Large.jpg",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
-// Create a proxy URL for your backend API
-const PROXY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
+// To fetch the detailed artwork data, the custom proxy is needed. Create a proxy URL for your backend API
 export async function fetchApi<T>(endpoint: string): Promise<T> {
+  const PROXY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -72,10 +68,6 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
 }
 
 function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
-  // if (!artwork) {
-  //   return FALLBACK_ARTWORK;
-  // }
-
   return {
     ...artwork,
     image:
@@ -83,7 +75,6 @@ function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
         /!(Large|Portrait|Square|PinterestSmall)\.jpg$/,
         "",
       ) || FALLBACK_ARTWORK.image,
-    // image: artwork.image || FALLBACK_ARTWORK.image
   };
 }
 

@@ -1,15 +1,7 @@
 "use server";
 import { Artist } from "~/lib/types/artist";
+import { fetchWikiArtApi } from "./fetch-api";
 
-// Constants
-const API_BASE_URL = "https://www.wikiart.org/en";
-const REQUEST_CONFIG = {
-  headers: {
-    Accept: "application/json",
-    "User-Agent": "Mozilla/5.0 (compatible; ArtGalleryBot/1.0)",
-  },
-  next: { revalidate: 0 }, // Force revalidation on each request
-} as const;
 
 // Fallback data
 const FALLBACK_ARTISTS: Artist[] = [
@@ -35,32 +27,6 @@ function shuffleArray<T>(array: T[]): T[] {
     .map(({ value }) => value);
 }
 
-// Enhanced fetch with automatic timeout and error handling
-async function fetchApi<T>(endpoint: string): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...REQUEST_CONFIG,
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    return data as T;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`Request timeout for ${endpoint}`);
-    }
-    throw new Error(
-      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 // Process artist image URLs
 function processArtist(artist: Artist): Artist {
   return {
@@ -79,7 +45,7 @@ export async function fetchPopularArtists(
   currentPage: number;
 }> {
   try {
-    const allArtists = await fetchApi<Artist[]>(
+    const allArtists = await fetchWikiArtApi<Artist[]>(
       "/app/api/popularartists?json=1",
     );
 

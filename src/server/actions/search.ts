@@ -1,5 +1,6 @@
 "use server";
 import { WikiArtSearchResult } from "~/lib/types/artwork";
+import { fetchWikiArtApi } from "./fetch-api";
 
 const API_BASE_URL = "https://www.wikiart.org/en";
 const REQUEST_CONFIG = {
@@ -102,7 +103,7 @@ export async function search(query: string): Promise<SearchResults> {
   try {
     console.log("Searching for:", query);
     
-    const searchResults = await fetchApi<WikiArtSearchResult[]>(
+    const searchResults = await fetchWikiArtApi<WikiArtSearchResult[]>(
       `/search/${encodeURIComponent(query)}/1?json=2`
     );
 
