@@ -143,7 +143,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                 <Card className="overflow-hidden">
                   <div className="relative aspect-[3/4]">
                     <Image
-                      src={artist.image}
+                      src={artist.image!}
                       alt={artist.artistName}
                       fill
                       className="object-cover"

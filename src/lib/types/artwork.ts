@@ -51,3 +51,15 @@ export interface WikiArtSearchResult {
   image: string;
   height: number;
 }
+
+
+export interface ArtworkMetrics { 
+  contentId: number;
+  timeDistance: number;
+  tagSimilarity: number;
+  dictionarySimilarity: number;
+  styleSimilarity: number;
+  techniqueSimilarity: number;
+  periodSimilarity: number;
+  themeSimilarity: number;
+}
