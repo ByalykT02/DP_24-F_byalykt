@@ -5,7 +5,7 @@ import { artworks, artists } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { logger, logging } from "~/utils/logger";
 import { ArtworkDetailed } from "~/lib/types/artwork";
-import { ApiResponse } from "~/lib/types/collection";
+import { ApiResponse } from "~/lib/types/api";
 import { fetchArtistDetails } from "./fetch-artist";
 
 /**

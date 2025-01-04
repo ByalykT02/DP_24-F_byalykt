@@ -202,7 +202,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     const checkFavoriteStatus = async () => {
       if (session?.user?.id) {
         const status = await checkIsFavorite(session.user.id, Number(params.id));
-        setIsFavorite(status.success);
+        setIsFavorite(status.data?.isFavorite!);
       }
     };
 
@@ -328,7 +328,11 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
               </div>
 
               <div className="flex gap-2">
-                <FavoriteButton artworkId={artwork.contentId} />
+                <FavoriteButton
+                  artworkId={artwork.contentId}
+                  isFavorite={isFavorite}
+                  onToggle={(newState) => setIsFavorite(newState)}
+                />
                 <AddToCollectionButton artworkId={artwork.contentId} />
               </div>
 

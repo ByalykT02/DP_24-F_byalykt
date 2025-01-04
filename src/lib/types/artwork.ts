@@ -1,13 +1,13 @@
 export interface Artwork {
-  title: string,
-  contentId: number,
-  artistContentId: number,
-  artistName: string,
-  completitionYear: number,
-  yearAsString: string,
-  width: number,
-  image: string,
-  height: number
+  title: string;
+  contentId: number;
+  artistContentId: number;
+  artistName: string;
+  completitionYear: number;
+  yearAsString: string;
+  width: number;
+  image: string;
+  height: number;
 }
 
 export interface ArtworkDetailed {
@@ -21,8 +21,8 @@ export interface ArtworkDetailed {
   yearAsString: string | null;
   genre: string | null;
   style: string | null;
-  tags: string | null; // Match database type
-  dictionaries: any | null; // Allow JSON storage
+  tags: string | null;
+  dictionaries: any | null;
   width: string | null;
   height: string | null;
   material: string | null;
@@ -31,13 +31,13 @@ export interface ArtworkDetailed {
   period: string | null;
   serie: string | null;
   galleryName: string | null;
+  image: string;
   auction: string | null;
   yearOfTrade: number | null;
-  lastPrice: string | null; // Match database type
-  image: string;
+  lastPrice: string | null;
   description: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface WikiArtSearchResult {

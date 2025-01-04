@@ -1,47 +1,38 @@
-
-export interface Artist{
-  contentId: number,
-  artistName: string,
-  url: string,
-  lastNameFirst: string,
-  birthDayAsString: string,
-  deathDayAsString: string,
-  image: string,
-  wikipediaUrl: string,
-  dictonaries?: number[]
-}
-
-export interface ArtistDetailed {
-  // Basic Info
+export interface Artist {
   contentId: number;
   artistName: string;
   url: string;
   lastNameFirst: string;
-  
-  // Dates
-  birthDay: string;
-  deathDay: string;
   birthDayAsString: string;
   deathDayAsString: string;
-  
-  // Additional Info
-  originalArtistName: string;
-  gender: string;
-  biography: string;
-  story: string;
-  
-  // Career Details
-  activeYearsStart: string | null;
-  activeYearsCompletion: string | null;
-  series: string;
-  themes: string;
-  periodsOfWork: string;
-  
-  // Media
   image: string;
   wikipediaUrl: string;
-  
-  // Relations
-  relatedArtistsIds: number[];
-  dictonaries: number[];
+  dictonaries?: number[];
+}
+
+export interface ArtistDetailed {
+  contentId: number;
+  artistName: string;
+  url: string | null;
+  lastNameFirst: string | null;
+  birthDay: string | null;
+  deathDay: string | null;
+  birthDayAsString: string | null;
+  deathDayAsString: string | null;
+  originalArtistName: string | null;
+  gender: string | null;
+  biography: string | null;
+  story: string | null;
+  activeYearsStart: string | null;
+  activeYearsCompletion: string | null;
+  series: string | null;
+  themes: string | null;
+  periodsOfWork: string | null;
+  image: string | null;
+  wikipediaUrl: string | null;
+
+  relatedArtistsIds?: number[];
+  dictonaries?: number[];
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }

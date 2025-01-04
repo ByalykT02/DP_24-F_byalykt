@@ -132,7 +132,7 @@ export const artists = createTable("artist", {
   image: varchar("image", { length: 1000 }),
   wikipediaUrl: varchar("wikipedia_url", { length: 1000 }),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
 // Artworks table
@@ -141,7 +141,7 @@ export const artworks = createTable("artwork", {
   artistContentId: integer("artist_content_id")
     .notNull()
     .references(() => artists.contentId),
-  artistName: varchar("artist_name", { length: 255 }),
+  artistName: varchar("artist_name", { length: 255 }).notNull(),
   artistUrl: varchar("artist_url", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
   url: varchar("url", { length: 255 }),
@@ -231,7 +231,7 @@ export const userInteractions = createTable("user_interaction", {
   comment: text("comment"),
   isFavorite: boolean("is_favorite").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
 // Relations

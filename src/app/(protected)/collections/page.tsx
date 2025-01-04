@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { CreateCollectionDialog } from "~/components/collections/create-collection-dialog";
 import { getUserCollections } from "~/server/actions/collections";
-import { ApiResponse, CollectionWithDetails } from "~/lib/types/collection";
+import { CollectionWithDetails } from "~/lib/types/collection";
 
 export const dynamic = "force-dynamic";
 

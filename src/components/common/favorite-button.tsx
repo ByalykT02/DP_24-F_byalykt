@@ -1,62 +1,91 @@
 "use client";
-
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Heart } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { toggleFavorite } from "~/server/actions/favorites";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "hooks/use-current-user";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 
 interface FavoriteButtonProps {
   artworkId: number;
-  initialIsFavorite?: boolean;
-}
-
-interface ToggleFavoriteResponse {
-  success: boolean;
   isFavorite: boolean;
-  error?: string;
+  onToggle: (newState: boolean) => void;
 }
 
-export function FavoriteButton({ 
-  artworkId, 
-  initialIsFavorite = false 
+export function FavoriteButton({
+  artworkId,
+  isFavorite,
+  onToggle,
 }: FavoriteButtonProps) {
   const user = useCurrentUser();
-  const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleToggleFavorite = async () => {
+  const handleToggleFavorite = useCallback(async () => {
+    // Reset error state
+    setError(null);
+
+    // Handle unauthenticated users
     if (!user?.id) {
       router.push("/auth/login");
       return;
     }
 
-    setIsLoading(true);
     try {
-      const result = await toggleFavorite(user.id, artworkId) as ToggleFavoriteResponse;
+      setIsLoading(true);
+      const response = await toggleFavorite({ userId: user.id, artworkId });
       
-      if (result.success && typeof result.isFavorite === 'boolean') {
-        setIsFavorite(result.isFavorite);
+      if (!response.success) {
+        throw new Error(response.error ?? "Failed to update favorite status");
       }
+      
+      onToggle(response.data?.isFavorite!);
     } catch (error) {
-      console.error("Failed to toggle favorite:", error);
+      // Type guard for Error objects
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An unexpected error occurred. Please try again.";
+      
+      setError(errorMessage);
+      
+      // Log error for monitoring
+      console.error("Error toggling favorite:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, artworkId, onToggle, router]);
 
   return (
-    <Button
-      variant={isFavorite ? "default" : "outline"}
-      size="lg"
-      onClick={handleToggleFavorite}
-      disabled={isLoading}
-      className="gap-2 min-w-[120px]"
-    >
-      <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
-      {isFavorite ? "Favorited" : "Favorite"}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        variant={isFavorite ? "default" : "outline"}
+        size="lg"
+        onClick={handleToggleFavorite}
+        className="min-w-[120px] gap-2"
+        disabled={isLoading}
+      >
+        <Heart 
+          className={`h-5 w-5 ${isFavorite ? "fill-current" : ""} ${
+            isLoading ? "animate-pulse" : ""
+          }`}
+        />
+        {isLoading 
+          ? "Loading..." 
+          : isFavorite 
+            ? "Favorited" 
+            : "Favorite"
+        }
+      </Button>
+
+      {error && (
+        <Alert variant="destructive" className="mt-2">
+          <AlertDescription className="text-sm">
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
   );
 }

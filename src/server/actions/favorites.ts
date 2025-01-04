@@ -4,84 +4,78 @@ import { desc, eq, and } from "drizzle-orm";
 import { db } from "~/server/db";
 import { userInteractions, artworks, artists } from "~/server/db/schema";
 import { logging } from "~/utils/logger";
-import { z } from "zod"; // For input validation
-
-// Input validation schemas
-const toggleFavoriteSchema = z.object({
-  userId: z.string().min(1),
-  artworkId: z.number().positive(),
-});
-
-const getFavoritesSchema = z.object({
-  userId: z.string().min(1),
-});
+import { ApiResponse } from "~/lib/types/api";
+import {
+  UserFavorites,
+  ToggleFavorite,
+  ToggleFavoriteParams,
+  UserFavorite,
+} from "~/lib/types/favorite";
 
 /**
  * Toggle favorite status for an artwork
  */
-export async function toggleFavorite(userId: string, artworkId: number) {
-  const logger = logging.child({ 
-    action: 'toggleFavorite', 
-    userId, 
-    artworkId 
+export async function toggleFavorite(
+  params: ToggleFavoriteParams,
+): Promise<ApiResponse<ToggleFavorite>> {
+  const logger = logging.child({
+    action: "toggleFavorite",
+    userId: params.userId,
+    artworkId: params.artworkId,
   });
 
   try {
-    // Validate inputs
-    const validated = toggleFavoriteSchema.parse({ userId, artworkId });
-
     // Check if the artwork is already favorited
     const existingFavorite = await db
       .select()
       .from(userInteractions)
       .where(
         and(
-          eq(userInteractions.userId, validated.userId),
-          eq(userInteractions.artworkId, validated.artworkId),
+          eq(userInteractions.userId, params.userId),
+          eq(userInteractions.artworkId, params.artworkId),
         ),
       )
       .limit(1);
 
     let result;
-    if (existingFavorite.length > 0) {
+
+    if (existingFavorite[0]) {
       const newStatus = !existingFavorite[0]?.isFavorite;
       await db
         .update(userInteractions)
-        .set({ 
+        .set({
           isFavorite: newStatus,
           updatedAt: new Date(),
         })
         .where(eq(userInteractions.id, existingFavorite[0].id));
-      
-      result = { success: true, isFavorite: newStatus };
-      logger.info('Favorite status updated successfully', result);
+
+      result = { success: true, data: { isFavorite: newStatus } };
+      logger.info("Favorite status updated successfully", result);
     } else {
       await db.insert(userInteractions).values({
-        userId: validated.userId,
-        artworkId: validated.artworkId,
+        userId: params.userId,
+        artworkId: params.artworkId,
         isFavorite: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      
-      result = { success: true, isFavorite: true };
-      logger.info('New favorite created successfully', result);
+
+      result = { success: true, data: { isFavorite: true } };
+      logger.info("New favorite created successfully", result);
     }
 
     return result;
-
   } catch (error) {
-    logger.error('Failed to toggle favorite', error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: 'Invalid input data',
-        details: error.errors 
-      };
+    logger.error("Failed to toggle favorite", error);
+    if (error instanceof Error) {
+      logging.error("Failed to toggle favorite", error);
+    } else {
+      logging.error("Failed to toggle favorite", { message: String(error) });
     }
-    return { 
-      success: false, 
-      error: 'Failed to toggle favorite status'
+
+    return {
+      success: false,
+      error: "Failed to toggle favorite status",
     };
   }
 }
@@ -89,30 +83,20 @@ export async function toggleFavorite(userId: string, artworkId: number) {
 /**
  * Get all favorites for a user
  */
-export async function getFavorites(userId: string) {
-  const logger = logging.child({ 
-    action: 'getFavorites', 
-    userId 
+export async function getFavorites(
+  userId: string,
+): Promise<ApiResponse<UserFavorites>> {
+  const logger = logging.child({
+    action: "getFavorites",
+    userId,
   });
 
   try {
-    // Validate input
-    const validated = getFavoritesSchema.parse({ userId });
-
     const favorites = await db
       .select({
         id: userInteractions.id,
-        artwork: {
-          contentId: artworks.contentId,
-          title: artworks.title,
-          image: artworks.image,
-          yearAsString: artworks.yearAsString,
-        },
-        artist: {
-          contentId: artists.contentId,
-          artistName: artists.artistName,
-          url: artists.url,
-        },
+        artwork: artworks,
+        artist: artists,
         createdAt: userInteractions.createdAt,
       })
       .from(userInteractions)
@@ -120,7 +104,7 @@ export async function getFavorites(userId: string) {
       .innerJoin(artists, eq(artworks.artistContentId, artists.contentId))
       .where(
         and(
-          eq(userInteractions.userId, validated.userId),
+          eq(userInteractions.userId, userId),
           eq(userInteractions.isFavorite, true),
         ),
       )
@@ -128,20 +112,16 @@ export async function getFavorites(userId: string) {
 
     logger.info(`Retrieved ${favorites.length} favorites`);
     return { success: true, data: favorites };
-
   } catch (error) {
-    logger.error('Failed to get favorites', error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: 'Invalid input data',
-        details: error.errors 
-      };
+    logger.error("Failed to get favorite", error);
+    if (error instanceof Error) {
+      logging.error("Failed to get favorite", error);
+    } else {
+      logging.error("Failed to get favorite", { message: String(error) });
     }
-    return { 
-      success: false, 
-      error: 'Failed to retrieve favorites',
-      data: [] 
+    return {
+      success: false,
+      error: "Failed to toggle favorite status",
     };
   }
 }
@@ -149,39 +129,33 @@ export async function getFavorites(userId: string) {
 /**
  * Clear all favorites for a user
  */
-export async function clearFavorites(userId: string) {
-  const logger = logging.child({ 
-    action: 'clearFavorites', 
-    userId 
+export async function clearFavorites(userId: string):Promise<ApiResponse<void>> {
+  const logger = logging.child({
+    action: "clearFavorites",
+    userId,
   });
 
   try {
-    // Validate input
-    const validated = getFavoritesSchema.parse({ userId });
-
     await db
       .update(userInteractions)
-      .set({ 
+      .set({
         isFavorite: false,
         updatedAt: new Date(),
       })
-      .where(eq(userInteractions.userId, validated.userId));
+      .where(eq(userInteractions.userId, userId));
 
-    logger.info('Favorites cleared successfully');
+    logger.info("Favorites cleared successfully");
     return { success: true };
-
   } catch (error) {
-    logger.error('Failed to clear favorites', error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: 'Invalid input data',
-        details: error.errors 
-      };
+    logger.error("Failed to clear favorites", error);
+    if (error instanceof Error) {
+      logging.error("Failed to clear favorites", error);
+    } else {
+      logging.error("Failed to clear favorites", { message: String(error) });
     }
-    return { 
-      success: false, 
-      error: 'Failed to clear favorites' 
+    return {
+      success: false,
+      error: "Failed to clear favorites",
     };
   }
 }
@@ -189,46 +163,42 @@ export async function clearFavorites(userId: string) {
 /**
  * Check if an artwork is favorited by a user
  */
-export async function checkIsFavorite(userId: string, artworkId: number) {
-  const logger = logging.child({ 
-    action: 'checkIsFavorite', 
+export async function checkIsFavorite(userId: string, artworkId: number):Promise<ApiResponse<ToggleFavorite>> {
+  const logger = logging.child({
+    action: "checkIsFavorite",
     userId,
-    artworkId 
+    artworkId,
   });
 
   try {
-    // Validate inputs
-    const validated = toggleFavoriteSchema.parse({ userId, artworkId });
-
     const favorite = await db
       .select()
       .from(userInteractions)
       .where(
         and(
-          eq(userInteractions.userId, validated.userId),
-          eq(userInteractions.artworkId, validated.artworkId),
+          eq(userInteractions.userId, userId),
+          eq(userInteractions.artworkId, artworkId),
           eq(userInteractions.isFavorite, true),
         ),
       )
       .limit(1);
 
     const isFavorite = favorite.length > 0;
-    logger.debug('Favorite status checked', { isFavorite });
-    return { success: true, isFavorite };
-
+    logger.debug("Favorite status checked", { isFavorite });
+    return { success: true, data: { isFavorite } };
   } catch (error) {
-    logger.error('Failed to check favorite status', error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        error: 'Invalid input data',
-        details: error.errors 
-      };
+    logger.error("Failed to check favorite status", error);
+    if (error instanceof Error) {
+      logging.error("Failed to check favorite status", error);
+    } else {
+      logging.error("Failed to check favorite status", {
+        message: String(error),
+      });
     }
-    return { 
-      success: false, 
-      error: 'Failed to check favorite status',
-      isFavorite: false 
+    return {
+      success: false,
+      error: "Failed to check favorite status",
+      data: { isFavorite: false },
     };
   }
 }

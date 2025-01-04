@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Loading } from "~/components/ui/loading";
@@ -9,22 +9,59 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { clearFavorites, getFavorites } from "~/server/actions/favorites";
+import { UserFavorite, UserFavorites } from "~/lib/types/favorite";
 
 export default function FavoritesPage() {
   const { data: session } = useSession();
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<UserFavorites>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFavorites = useCallback(async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      const response = await getFavorites(session.user.id);
+
+      if (!response.success) {
+        setError(response.error ?? "Failed to load favorites");
+        setFavorites([]);
+      } else {
+        const validFavorites = (response.data ?? []).filter(
+          (c): c is UserFavorite => c != null,
+        );
+        setFavorites(validFavorites);
+        setError(null);
+      }
+    } catch (err) {
+      setError("Failed to load favorites");
+      setFavorites([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    const loadFavorites = async () => {
-      if (session?.user?.id) {
-        const data = await getFavorites(session.user.id);
-        setFavorites(data);
-        setIsLoading(false);
-      }
-    };
-
     void loadFavorites();
+  }, [loadFavorites]);
+
+  const dropFavorites = useCallback(async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      const response = await clearFavorites(session.user.id);
+
+      if (!response.success) {
+        setError(response.error ?? "Failed to clear favorites");
+      } else {
+        setFavorites([]);
+        setError(null);
+      }
+    } catch (err) {
+      setError("Failed to clear favorites");
+    } finally {
+      setIsLoading(false);
+    }
   }, [session?.user?.id]);
 
   const handleClearFavorites = async () => {
@@ -38,6 +75,23 @@ export default function FavoritesPage() {
 
   if (isLoading) {
     return <Loading />;
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="p-8 text-center">
+          <p className="text-destructive">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
   }
 
   return (

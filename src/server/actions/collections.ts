@@ -10,12 +10,12 @@ import {
 } from "~/server/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import {
-  ApiResponse,
   CollectionWithDetails,
   CollectionWithItems,
   CreateCollectionParams,
 } from "~/lib/types/collection";
 import { logging } from "~/utils/logger";
+import { ApiResponse } from "~/lib/types/api";
 
 export async function createCollection(
   params: CreateCollectionParams,
