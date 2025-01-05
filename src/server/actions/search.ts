@@ -2,15 +2,6 @@
 import { WikiArtSearchResult } from "~/lib/types/artwork";
 import { fetchWikiArtApi } from "./fetch-api";
 
-const API_BASE_URL = "https://www.wikiart.org/en";
-const REQUEST_CONFIG = {
-  headers: {
-    Accept: "application/json",
-    "User-Agent": "Mozilla/5.0 (compatible; ArtGalleryBot/1.0)",
-  },
-  next: { revalidate: 3600 }, // Cache for 1 hour
-} as const;
-
 export interface SearchResults {
   artworks: {
     contentId: number;
@@ -26,31 +17,6 @@ export interface SearchResults {
     url: string | undefined;
     type: 'artist';
   }[];
-}
-
-async function fetchApi<T>(endpoint: string): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...REQUEST_CONFIG,
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data as T;
-  } catch (error) {
-    throw new Error(
-      `Failed to fetch ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  } finally {
-    clearTimeout(timeoutId);
-  }
 }
 
 function processSearchResults(results: WikiArtSearchResult[]): SearchResults {
@@ -88,7 +54,7 @@ function processSearchResults(results: WikiArtSearchResult[]): SearchResults {
     ...artist,
     type: 'artist' as const
   }));
-
+ 
   return {
     artworks,
     artists

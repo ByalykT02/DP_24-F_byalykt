@@ -140,8 +140,8 @@ export async function getRecommendations({
     const timeRange =
       includeTimeRange && reference.completitionYear
         ? {
-            min: reference.completitionYear - 25,
-            max: reference.completitionYear + 25,
+            min: reference.completitionYear - 50,
+            max: reference.completitionYear + 50,
           }
         : null;
 
