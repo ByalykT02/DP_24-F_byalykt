@@ -1,8 +1,13 @@
 import winston from 'winston';
 import path from 'path';
 
+type LogLevels = 'error' | 'warn' | 'info' | 'http' | 'debug';
+interface MetaData {
+  [key: string]: any;
+}
+
 // Define log levels
-const levels = {
+const levels: Record<LogLevels, number> = {
   error: 0,
   warn: 1,
   info: 2,
@@ -11,7 +16,7 @@ const levels = {
 };
 
 // Define log colors
-const colors = {
+const colors: Record<LogLevels, string> = {
   error: 'red',
   warn: 'yellow',
   info: 'green',
@@ -31,109 +36,93 @@ const logFormat = winston.format.combine(
   )
 );
 
-// Create console and file transport
-const transports = [
+// Function to get transports based on the environment
+const getTransports = (): winston.transport[] => {
+  const transports: winston.transport[] = [];
+
   // Console transport
-  new winston.transports.Console({
-    format: logFormat,
-  }),
-  
-  // Error log file
-  new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'error.log'),
-    level: 'error',
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json()
-    ),
-  }),
-  
-  // Combined log file
-  new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'combined.log'),
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json()
-    ),
-  }),
-];
+  transports.push(
+    new winston.transports.Console({
+      format: logFormat,
+    })
+  );
+
+  // File transports for non-production environments
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      transports.push(
+        new winston.transports.File({
+          filename: path.join(process.cwd(), 'logs', 'error.log'),
+          level: 'error',
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json()
+          ),
+        })
+      );
+
+      transports.push(
+        new winston.transports.File({
+          filename: path.join(process.cwd(), 'logs', 'combined.log'),
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json()
+          ),
+        })
+      );
+    } catch (error) {
+      console.error('Failed to create file transports:', error);
+    }
+  }
+
+  return transports;
+};
 
 // Create the logger
 export const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   levels,
-  transports,
+  transports: getTransports(),
   exitOnError: false,
 });
 
 // Additional utility methods
 export const logging = {
-  /**
-   * Log an error with optional metadata
-   * @param message Error message
-   * @param meta Optional metadata or error object
-   */
-  error: (message: string, meta?: Record<string, any> | Error) => {
+  error: (message: string, meta?: MetaData | Error) => {
     if (meta instanceof Error) {
-      logger.error(message, { 
-        errorName: meta.name, 
-        errorMessage: meta.message, 
-        stack: meta.stack 
+      logger.error(message, {
+        errorName: meta.name,
+        errorMessage: meta.message,
+        stack: meta.stack,
       });
     } else {
       logger.error(message, meta);
     }
   },
-
-  /**
-   * Log an informational message with optional metadata
-   * @param message Info message
-   * @param meta Optional metadata
-   */
-  info: (message: string, meta?: Record<string, any>) => {
-    logger.info(message, meta);
-  },
-
-  /**
-   * Log a warning message with optional metadata
-   * @param message Warning message
-   * @param meta Optional metadata
-   */
-  warn: (message: string, meta?: Record<string, any>) => {
-    logger.warn(message, meta);
-  },
-
-  /**
-   * Log a debug message with optional metadata
-   * @param message Debug message
-   * @param meta Optional metadata
-   */
-  debug: (message: string, meta?: Record<string, any>) => {
-    logger.debug(message, meta);
-  },
-
-  /**
-   * Create a child logger with additional context
-   * @param context Contextual metadata to add to all logs
-   */
-  child: (context: Record<string, any>) => {
-    return logger.child(context);
-  }
+  info: (message: string, meta?: MetaData) => logger.info(message, meta),
+  warn: (message: string, meta?: MetaData) => logger.warn(message, meta),
+  debug: (message: string, meta?: MetaData) => logger.debug(message, meta),
+  child: (context: MetaData) => logger.child(context),
 };
 
-// Handle unhandled rejections and exceptions
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', { 
-    promise, 
-    reason: reason instanceof Error ? reason.message : reason 
+// Handle unhandled rejections and exceptions conditionally
+if (typeof process !== 'undefined') {
+  process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+    logger.error('Unhandled Rejection at:', {
+      promise,
+      reason: reason instanceof Error ? reason.message : reason,
+    });
   });
-});
 
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', { 
-    name: error.name, 
-    message: error.message, 
-    stack: error.stack 
+  process.on('uncaughtException', (error: Error) => {
+    logger.error('Uncaught Exception:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   });
-  process.exit(1);
-});
+}
