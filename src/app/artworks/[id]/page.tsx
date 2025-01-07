@@ -17,6 +17,7 @@ import {
   Tag,
   Brush,
   Ruler,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { ArtworkDetailed } from "~/lib/types/artwork";
@@ -27,6 +28,13 @@ import { checkIsFavorite } from "~/server/actions/favorites";
 import { FavoriteButton } from "~/components/common/favorite-button";
 import { AddToCollectionButton } from "~/components/collections/add-to-collection-button";
 import { ArtworkRecommendations } from "~/components/recommendations/artwork-recommendations";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  TransformWrapper,
+  TransformComponent,
+  useControls,
+} from "react-zoom-pan-pinch";
+import ShareDialog from "~/components/common/share-dialog";
 
 // Types
 interface DetailCardProps {
@@ -56,66 +64,77 @@ const DetailCard = ({ title, content, icon }: DetailCardProps) => {
   );
 };
 
-const ImageViewer = ({
-  artwork,
-  isZoomed,
-  onToggleZoom,
-  dimensions,
-}: {
-  artwork: ArtworkDetailed;
-  isZoomed: boolean;
-  onToggleZoom: () => void;
-  dimensions: { width: number; height: number };
-}) => (
-  <Card
-    className={`overflow-hidden bg-black/5 backdrop-blur-sm ${
-      isZoomed
-        ? "fixed inset-4 z-50 flex items-center justify-center bg-black/90"
-        : ""
-    }`}
-  >
-    <div
-      className={`relative flex items-center justify-center ${
-        isZoomed ? "h-full w-full" : ""
-      }`}
-      onClick={onToggleZoom}
-      role="button"
-      tabIndex={0}
-      aria-label={isZoomed ? "Exit fullscreen" : "View fullscreen"}
-      onKeyDown={(e) => e.key === "Enter" && onToggleZoom()}
-    >
-      {artwork.image && (
-        <Image
-          src={artwork.image}
-          alt={artwork.title || "Artwork"}
-          width={isZoomed ? artwork.width ?? 800 : dimensions.width || 800}
-          height={isZoomed ? artwork.height ?? 600 : dimensions.height || 600}
-          className={`object-contain transition-transform duration-200 ${
-            isZoomed ? "max-h-full max-w-full" : ""
-          }`}
-          priority
-          sizes={isZoomed ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
-        />
-      )}
-    </div>
-    <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
-      <div className="flex items-center justify-between">
-        <Badge variant="secondary" className="gap-1">
-          <Ruler className="h-3 w-3" />
-          {artwork.width} x {artwork.height}
-        </Badge>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-2"
-          onClick={onToggleZoom}
-          aria-label={isZoomed ? "Exit fullscreen view" : "View in fullscreen"}
+const ImageControls = () => {
+  const { zoomIn, zoomOut, resetTransform } = useControls();
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="gap-2"
+        onClick={() => zoomIn()}
+      >
+        Zoom In
+      </Button>
+
+      <Button
+        variant="secondary"
+        size="sm"
+        className="gap-2"
+        onClick={() => zoomOut()}
+      >
+        Zoom Out
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="gap-2"
+        onClick={() => resetTransform()}
+      >
+        Reset
+      </Button>
+    </>
+  );
+};
+
+const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
+  <Card className="overflow-hidden bg-black/5 backdrop-blur-sm">
+    <TransformWrapper>
+      <AnimatePresence>
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="relative h-full"
+          onClick={(e) => e.stopPropagation()}
         >
-          <Eye className="h-4 w-4" />
-          {isZoomed ? "Exit Fullscreen" : "View Fullscreen"}
-        </Button>
+          {artwork.image && (
+            <TransformComponent>
+              <Image
+                src={artwork.image}
+                alt={artwork.title || "Artwork"}
+                width={Number(artwork.width) ?? 1200}
+                height={Number(artwork.height) ?? 800}
+                className="object-contain"
+                priority
+                sizes="90vw"
+              />
+            </TransformComponent>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <Badge variant="secondary" className="gap-1">
+            {artwork.width} x {artwork.height}
+          </Badge>
+
+          <ImageControls />
+        </div>
       </div>
-    </div>
+    </TransformWrapper>
   </Card>
 );
 
@@ -163,7 +182,7 @@ const useImageDimensions = (artwork?: ArtworkDetailed) => {
 
     const containerWidth = containerRef.current.offsetWidth;
     const maxHeight = Math.min(window.innerHeight * 0.7, 800);
-    const aspectRatio = artwork.width / artwork.height;
+    const aspectRatio = Number(artwork.width) / Number(artwork.height);
 
     let width = containerWidth;
     let height = containerWidth / aspectRatio;
@@ -189,19 +208,23 @@ const useImageDimensions = (artwork?: ArtworkDetailed) => {
 export default function ArtworkPage({ params }: ArtworkPageProps) {
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
-  
+
   const { artwork, isLoading, error } = useArtworkData(
     params.id,
-    session?.user?.id
+    session?.user?.id,
   );
   const { containerRef, dimensions } = useImageDimensions(artwork);
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
       if (session?.user?.id) {
-        const status = await checkIsFavorite(session.user.id, Number(params.id));
+        const status = await checkIsFavorite(
+          session.user.id,
+          Number(params.id),
+        );
         setIsFavorite(status.data?.isFavorite!);
       }
     };
@@ -215,11 +238,18 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
       if (e.key === "Escape" && isImageZoomed) {
         setIsImageZoomed(false);
       }
+      if (e.key === "Escape" && isShareDialogOpen) {
+        setIsShareDialogOpen(false);
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isImageZoomed]);
+
+  const handleShare = () => {
+    setIsShareDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -264,24 +294,6 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     );
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: artwork.title,
-          text: `Check out "${artwork.title}" by ${artwork.artistName}`,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.error("Error sharing:", err);
-      }
-    } else {
-      // Fallback to copying URL
-      await navigator.clipboard.writeText(window.location.href);
-      // You might want to show a toast notification here
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
       <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -306,14 +318,17 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           </Button>
         </div>
 
+        <ShareDialog
+          isOpen={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          type="artwork"
+          name={artwork.title}
+          id={artwork.contentId}
+        />
+
         <div className="grid gap-12 lg:grid-cols-2">
           <div ref={containerRef} className="relative">
-            <ImageViewer
-              artwork={artwork}
-              isZoomed={isImageZoomed}
-              onToggleZoom={() => setIsImageZoomed(!isImageZoomed)}
-              dimensions={dimensions}
-            />
+            <ImageViewer artwork={artwork} />
           </div>
 
           <ScrollArea className="h-[calc(100vh-8rem)]">

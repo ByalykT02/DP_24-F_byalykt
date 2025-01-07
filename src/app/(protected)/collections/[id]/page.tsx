@@ -359,12 +359,14 @@ export default function CollectionPage({ params }: CollectionPageProps) {
             <Share2 className="h-4 w-4" />
             Share
           </Button>
-
+          
+          
           <ShareDialog
             isOpen={isShareDialogOpen}
             onOpenChange={setIsShareDialogOpen}
-            collectionName={collection.name}
-            collectionId={collection.id}
+            type="collection"
+            name={collection.name}
+            id={collection.id}
           />
 
           <DropdownMenu>

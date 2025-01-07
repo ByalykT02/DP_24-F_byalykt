@@ -86,7 +86,8 @@ export async function fetchArtwork(
       `/App/Painting/ImageJson/${contentId}`,
     );
 
-    return processArtworkData(artwork);
+    // return processArtworkData(artwork);
+    return artwork;
   } catch (error) {
     console.error("Error fetching artwork:", error);
     return FALLBACK_ARTWORK;

@@ -23,8 +23,9 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 interface ShareDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  collectionName: string;
-  collectionId: number;
+  type: "artwork" | "collection";
+  name: string;
+  id: number;
 }
 
 type SharePlatform = "twitter" | "facebook" | "linkedin" | "email";
@@ -35,31 +36,33 @@ type ShareLinks = Record<SharePlatform, string>;
 const ShareDialog: React.FC<ShareDialogProps> = ({
   isOpen,
   onOpenChange,
-  collectionName,
-  collectionId,
+  type,
+  name,
+  id,
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const [shareError, setShareError] = useState<string>("");
 
-  const collectionUrl = `${window.location.origin}/collections/${collectionId}`;
-  const encodedUrl = encodeURIComponent(collectionUrl);
+  const basePath = type === "artwork" ? "artworks" : "collections";
+  const itemUrl = `${window.location.origin}/${basePath}/${id}`;
+  const encodedUrl = encodeURIComponent(itemUrl);
   const encodedName = encodeURIComponent(
-    `Check out this collection: ${collectionName}`,
+    `Check out this ${type}: ${name}`,
   );
 
   const shareLinks: ShareLinks = {
     twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedName}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-    email: `mailto:?subject=${encodedName}&body=Check%20out%20this%20collection:%20${encodedUrl}`,
+    email: `mailto:?subject=${encodedName}&body=Check%20out%20this%20${type}:${encodedUrl}`,
   };
 
   const handleNativeShare = async (): Promise<void> => {
     try {
       await navigator.share({
-        title: collectionName,
-        text: `Check out this collection: ${collectionName}`,
-        url: collectionUrl,
+        title: name,
+        text: `Check out this ${type}: ${name}`,
+        url: itemUrl,
       });
       setShareError("");
     } catch (error) {
@@ -71,7 +74,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 
   const handleCopyLink = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(collectionUrl);
+      await navigator.clipboard.writeText(itemUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       setShareError("");
@@ -94,9 +97,9 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Collection</DialogTitle>
+          <DialogTitle>Share {type === "artwork" ? "Artwork" : "Collection"}</DialogTitle>
           <DialogDescription>
-            Choose how you'd like to share "{collectionName}"
+            Choose how you'd like to share "{name}"
           </DialogDescription>
         </DialogHeader>
 
@@ -119,7 +122,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
             )}
 
             <div className="flex space-x-2">
-              <Input readOnly value={collectionUrl} className="flex-1" />
+              <Input readOnly value={itemUrl} className="flex-1" />
               <Button
                 variant="secondary"
                 size="icon"
