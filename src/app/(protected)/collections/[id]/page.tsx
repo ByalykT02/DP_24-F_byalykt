@@ -17,6 +17,8 @@ import {
   Grid,
   Search,
   FolderOpen,
+  LoaderIcon,
+  Loader,
 } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -29,26 +31,18 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
-import {
   getCollection,
   deleteCollection,
   removeFromCollection,
+  updateCollection,
 } from "~/server/actions/collections";
 import { EditCollectionDialog } from "~/components/collections/edit-collection-dialog";
 import { CollectionWithDetails } from "~/lib/types/collection";
 import { motion } from "framer-motion";
 import { Input } from "~/components/ui/input";
-import DeleteCollectionDialog from "~/components/common/delete-alert-dialog";
+import ActionDialog from "~/components/common/action-dialog";
 import ShareDialog from "~/components/common/share-dialog";
+import { toast } from "hooks/use-toast";
 
 interface CollectionPageProps {
   params: {
@@ -62,12 +56,13 @@ interface CollectionItem {
   };
 }
 
+// Animation variants for motion effects
 const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.1, // Stagger animation for children
     },
   },
 };
@@ -82,26 +77,77 @@ type CollectionState =
   | null;
 
 export default function CollectionPage({ params }: CollectionPageProps) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const [collection, setCollection] = useState<CollectionState>(null);
+  const [collection, setCollection] = useState<CollectionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isPublicAlertOpen, setIsPublicAlertOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState<number | null>(null);
 
+  // Handle share button click
+  const handleShareClick = useCallback(() => {
+    if (!collection) return;
 
+    if (!collection.isPublic) {
+      setIsPublicAlertOpen(true); // Show public alert
+    } else {
+      setIsShareDialogOpen(true); // Show share dialog
+    }
+  }, [collection]);
+
+  // Handle making the collection public
+  const handleMakePublic = async () => {
+    if (!session?.user?.id || !collection) return;
+
+    try {
+      const result = await updateCollection({
+        userId: session.user.id,
+        collectionId: collection.id,
+        name: collection.name,
+        description: collection.description ?? "",
+        isPublic: true,
+      });
+
+      if (result.success) {
+        setCollection((prev) => (prev ? { ...prev, isPublic: true } : prev)); // Update collection state
+        setIsPublicAlertOpen(false);
+        setIsShareDialogOpen(true);
+        toast({
+          title: "Collection made public",
+          description: "Your collection can now be shared with others.",
+        });
+      } else {
+        throw new Error(result.error ?? "Failed to make collection public");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to make collection public",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Filter artworks by search query
   const filteredArtworks = collection?.items.filter(
     (item: any) =>
       item.artwork.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.artwork.artistName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Load collection data from server
   const loadCollection = useCallback(async () => {
+    if (status === "loading") return;
     if (!session?.user?.id) {
-      setIsLoading(false);
+      router.push("/auth/signin"); // Redirect if not signed in
       return;
     }
 
@@ -120,19 +166,25 @@ export default function CollectionPage({ params }: CollectionPageProps) {
       setCollection(response.data);
       setError(null);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load collection",
-      );
-      setCollection(null);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load collection";
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [session?.user?.id, params.id]);
+  }, [session?.user?.id, params.id, router, status]);
 
+  // Load collection on component mount
   useEffect(() => {
     void loadCollection();
   }, [loadCollection]);
 
+  // Handle collection deletion
   const handleDelete = async () => {
     if (!session?.user?.id || !collection) return;
 
@@ -143,17 +195,28 @@ export default function CollectionPage({ params }: CollectionPageProps) {
         throw new Error(result.error ?? "Failed to delete collection");
       }
 
+      toast({
+        title: "Collection deleted",
+        description: "Your collection has been successfully deleted.",
+      });
       router.push("/collections");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete collection",
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete collection";
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
+  // Handle artwork removal from the collection
   const handleRemoveArtwork = async (artworkId: number) => {
-    if (!session?.user?.id || !collection) return;
+    if (!session?.user?.id || !collection || isRemoving !== null) return;
 
+    setIsRemoving(artworkId);
     try {
       const result = await removeFromCollection(
         session.user.id,
@@ -174,11 +237,25 @@ export default function CollectionPage({ params }: CollectionPageProps) {
           ),
         };
       });
+
+      toast({
+        title: "Artwork removed",
+        description: "The artwork has been removed from your collection.",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove artwork");
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to remove artwork";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemoving(null);
     }
   };
 
+  // Handle collection update
   const handleCollectionUpdated = useCallback(
     (updatedCollection: Partial<CollectionWithDetails>) => {
       setCollection((prev) => {
@@ -189,14 +266,26 @@ export default function CollectionPage({ params }: CollectionPageProps) {
         };
       });
       setIsEditDialogOpen(false);
+      toast({
+        title: "Collection updated",
+        description: "Your collection has been successfully updated.",
+      });
     },
     [],
   );
 
-  if (isLoading) {
+  // Render loading state
+  if (status === "loading" || isLoading) {
     return <Loading />;
   }
 
+  // Redirect unauthenticated users to the sign-in page
+  if (status === "unauthenticated") {
+    router.push("/auth/signin");
+    return null;
+  }
+
+  // Render error state
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -214,6 +303,7 @@ export default function CollectionPage({ params }: CollectionPageProps) {
     );
   }
 
+  // Render empty collection state
   if (!collection) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -229,6 +319,7 @@ export default function CollectionPage({ params }: CollectionPageProps) {
     );
   }
 
+  // Main component render
   return (
     <div className="container mx-auto space-y-6 px-4 py-8">
       {/* Header */}
@@ -260,7 +351,7 @@ export default function CollectionPage({ params }: CollectionPageProps) {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setIsShareDialogOpen(true)}
+            onClick={handleShareClick}
             variant="outline"
             className="gap-2"
             aria-label={`Share collection ${collection.name}`}
@@ -268,8 +359,8 @@ export default function CollectionPage({ params }: CollectionPageProps) {
             <Share2 className="h-4 w-4" />
             Share
           </Button>
-          
-          <ShareDialog 
+
+          <ShareDialog
             isOpen={isShareDialogOpen}
             onOpenChange={setIsShareDialogOpen}
             collectionName={collection.name}
@@ -375,8 +466,13 @@ export default function CollectionPage({ params }: CollectionPageProps) {
                   onClick={() =>
                     handleRemoveArtwork(collectionItem.artwork.contentId)
                   }
+                  disabled={isRemoving === collectionItem.artwork.contentId}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {isRemoving === collectionItem.artwork.contentId ? (
+                    <Loader className="h-4 w-4" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
                 </Button>
               </Card>
             </motion.div>
@@ -391,12 +487,22 @@ export default function CollectionPage({ params }: CollectionPageProps) {
         onCollectionUpdated={handleCollectionUpdated}
       />
 
-      <DeleteCollectionDialog
+      <ActionDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onDelete={handleDelete}
+        onAction={handleDelete}
         title="Delete Collection"
         description="Are you sure you want to delete this collection? This action cannot be undone."
+        buttonText="Delete"
+      />
+
+      <ActionDialog
+        isOpen={isPublicAlertOpen}
+        onOpenChange={setIsPublicAlertOpen}
+        onAction={handleMakePublic}
+        title="Make Collection Public?"
+        description="To share this collection, it needs to be public. Would you like to make it public now?"
+        buttonText="Make Public"
       />
     </div>
   );

@@ -6,6 +6,7 @@ import Header from "~/components/common/header";
 import Footer from "~/components/common/footer";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "auth";
+import { Toaster } from "~/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "GalleryGlobe",
@@ -20,15 +21,15 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-  <SessionProvider session={session}>
-
-    <html lang="en" className={`${GeistSans.variable}`}>
-      <body>
+    <SessionProvider session={session}>
+      <html lang="en" className={`${GeistSans.variable}`}>
+        <body>
           <Header />
           <main>{children}</main>
+          <Toaster />
           <Footer />
-      </body>
-    </html>
-  </SessionProvider>
+        </body>
+      </html>
+    </SessionProvider>
   );
 }

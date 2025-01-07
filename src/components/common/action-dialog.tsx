@@ -9,21 +9,23 @@ import {
   AlertDialogAction,
 } from "~/components/ui/alert-dialog";
 
-type DeleteCollectionDialogProps = {
+type ActionDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onDelete: () => void;
+  onAction: () => void;
   title: string;
   description: string;
+  buttonText: string;
 };
 
-export default function DeleteCollectionDialog({
+export default function ActionDialog({
   isOpen,
   onOpenChange,
-  onDelete,
+  onAction,
   title,
   description,
-}: DeleteCollectionDialogProps) {
+  buttonText
+}: ActionDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -34,10 +36,10 @@ export default function DeleteCollectionDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onDelete}
+            onClick={onAction}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete
+            {buttonText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
