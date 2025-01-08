@@ -49,6 +49,19 @@ interface ArtworkPageProps {
   };
 }
 
+const useImageOrientation = (artwork?: ArtworkDetailed) => {
+  const [isHorizontal, setIsHorizontal] = useState(false);
+
+  useEffect(() => {
+    if (artwork?.width && artwork?.height) {
+      const aspectRatio = Number(artwork.width) / Number(artwork.height);
+      setIsHorizontal(aspectRatio > 1);
+    }
+  }, [artwork?.width, artwork?.height]);
+
+  return isHorizontal;
+};
+
 // Components
 const DetailCard = ({ title, content, icon }: DetailCardProps) => {
   if (!content) return null;
@@ -173,6 +186,145 @@ const useArtworkData = (id: string, userId?: string) => {
   return { artwork, isLoading, error };
 };
 
+const TitleSection = ({ artwork, isFavorite, setIsFavorite, isHorizontal }: { 
+  artwork: ArtworkDetailed; 
+  isFavorite: boolean;
+  setIsFavorite: (state: boolean) => void;
+  isHorizontal: boolean;
+}) => (
+  <div className="flex items-start justify-between">
+    <div className="space-y-2">
+      <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+        {artwork.title}
+      </h1>
+      <h2 className="cursor-pointer text-xl text-gray-600 transition-colors hover:text-gray-900">
+        {artwork.artistName}
+      </h2>
+    </div>
+    {isHorizontal && (
+      <div className="flex gap-2">
+        <FavoriteButton
+          artworkId={artwork.contentId}
+          isFavorite={isFavorite}
+          onToggle={(newState) => setIsFavorite(newState)}
+        />
+        <AddToCollectionButton artworkId={artwork.contentId} />
+      </div>
+    )}
+  </div>
+);
+
+const DetailsContent = ({
+  artwork,
+  isFavorite,
+  setIsFavorite,
+  isHorizontal,
+  showTitle = true,
+}: {
+  artwork: ArtworkDetailed;
+  isFavorite: boolean;
+  setIsFavorite: (state: boolean) => void;
+  isHorizontal: boolean;
+  showTitle?: boolean;
+}) => {
+  return (
+    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"}`}>
+      {showTitle && (
+        <TitleSection 
+          artwork={artwork} 
+          isFavorite={isFavorite} 
+          setIsFavorite={setIsFavorite}
+          isHorizontal={isHorizontal}
+        />
+      )}
+
+      {/* Only show buttons in vertical layout */}
+      {!isHorizontal && (
+        <div className="flex gap-2">
+          <FavoriteButton
+            artworkId={artwork.contentId}
+            isFavorite={isFavorite}
+            onToggle={(newState) => setIsFavorite(newState)}
+          />
+          <AddToCollectionButton artworkId={artwork.contentId} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {artwork.style && (
+          <Badge variant="secondary" className="gap-1">
+            <Brush className="h-3 w-3" />
+            {artwork.style}
+          </Badge>
+        )}
+        {artwork.yearAsString && (
+          <Badge variant="secondary" className="gap-1">
+            <Calendar className="h-3 w-3" />
+            {artwork.yearAsString}
+          </Badge>
+        )}
+        {artwork.location && (
+          <Badge variant="secondary" className="gap-1">
+            <MapPin className="h-3 w-3" />
+            {artwork.location}
+          </Badge>
+        )}
+      </div>
+
+      {artwork.description && (
+        <div className="rounded-lg bg-white p-6 shadow-sm">
+          <h3 className="mb-3 font-semibold">Description</h3>
+          <p className="text-gray-600">{artwork.description}</p>
+        </div>
+      )}
+
+      <Separator />
+
+      <div
+        className={`grid gap-6 ${isHorizontal ? "grid-cols-4" : "sm:grid-cols-2"}`}
+      >
+        <DetailCard
+          title="Genre"
+          content={artwork.genre}
+          icon={<Tag className="h-4 w-4" />}
+        />
+        <DetailCard
+          title="Technique"
+          content={artwork.technique}
+          icon={<Brush className="h-4 w-4" />}
+        />
+        <DetailCard
+          title="Material"
+          content={artwork.material}
+          icon={<Tag className="h-4 w-4" />}
+        />
+        <DetailCard
+          title="Period"
+          content={artwork.period}
+          icon={<Calendar className="h-4 w-4" />}
+        />
+      </div>
+
+      {artwork.tags && (
+        <>
+          <Separator />
+          <div className="rounded-lg bg-white p-6 shadow-sm">
+            <h3 className="mb-4 font-semibold">Tags</h3>
+            <div className="flex flex-wrap gap-2">
+              {artwork.tags.split(",").map((tag) => (
+                <Badge key={tag} variant="outline" className="gap-1 bg-gray-50">
+                  <Tag className="h-3 w-3" />
+                  {tag.trim()}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const useImageDimensions = (artwork?: ArtworkDetailed) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -217,6 +369,8 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
     session?.user?.id,
   );
   const { containerRef, dimensions } = useImageDimensions(artwork);
+
+  const isHorizontal = useImageOrientation(artwork);
 
   useEffect(() => {
     const checkFavoriteStatus = async () => {
@@ -295,146 +449,87 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            onClick={() => router.back()}
-            variant="ghost"
-            className="gap-2"
-            aria-label="Go back to previous page"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleShare}
-            aria-label="Share artwork"
-          >
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
-        </div>
-
-        <ShareDialog
-          isOpen={isShareDialogOpen}
-          onOpenChange={setIsShareDialogOpen}
-          type="artwork"
-          name={artwork.title}
-          id={artwork.contentId}
-        />
-
-        <div className="grid gap-12 lg:grid-cols-2">
-          <div ref={containerRef} className="relative">
-            <ImageViewer artwork={artwork} />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
+        <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div className="mb-6 flex items-center justify-between">
+            <Button
+              onClick={() => router.back()}
+              variant="ghost"
+              className="gap-2"
+              aria-label="Go back to previous page"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleShare}
+              aria-label="Share artwork"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
           </div>
-
-          <ScrollArea className="h-[calc(100vh-8rem)]">
-            <div className="space-y-8 pr-4">
-              <div>
-                <h1 className="text-4xl font-bold leading-tight text-gray-900">
-                  {artwork.title}
-                </h1>
-                <h2 className="mt-2 text-2xl text-gray-600">
-                  by {artwork.artistName}
-                </h2>
+  
+          <ShareDialog
+            isOpen={isShareDialogOpen}
+            onOpenChange={setIsShareDialogOpen}
+            type="artwork"
+            name={artwork.title}
+            id={artwork.contentId}
+          />
+  
+          {isHorizontal ? (
+            // Horizontal Layout
+            <div className="space-y-8">
+              {/* Title at the top with buttons */}
+              <TitleSection 
+                artwork={artwork} 
+                isFavorite={isFavorite}
+                setIsFavorite={setIsFavorite}
+                isHorizontal={true}
+              />
+  
+              {/* Image */}
+              <div ref={containerRef} className="relative">
+                <ImageViewer artwork={artwork} />
               </div>
-
-              <div className="flex gap-2">
-                <FavoriteButton
-                  artworkId={artwork.contentId}
+  
+              {/* Details below */}
+              <ScrollArea className="h-auto">
+                <DetailsContent
+                  artwork={artwork}
                   isFavorite={isFavorite}
-                  onToggle={(newState) => setIsFavorite(newState)}
+                  setIsFavorite={setIsFavorite}
+                  isHorizontal={true}
+                  showTitle={false}
                 />
-                <AddToCollectionButton artworkId={artwork.contentId} />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {artwork.style && (
-                  <Badge variant="secondary" className="gap-1">
-                    <Brush className="h-3 w-3" />
-                    {artwork.style}
-                  </Badge>
-                )}
-                {artwork.yearAsString && (
-                  <Badge variant="secondary" className="gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {artwork.yearAsString}
-                  </Badge>
-                )}
-                {artwork.location && (
-                  <Badge variant="secondary" className="gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {artwork.location}
-                  </Badge>
-                )}
-              </div>
-
-              {artwork.description && (
-                <div className="rounded-lg bg-white p-6 shadow-sm">
-                  <h3 className="mb-3 font-semibold">Description</h3>
-                  <p className="text-gray-600">{artwork.description}</p>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="grid gap-6">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <DetailCard
-                    title="Genre"
-                    content={artwork.genre}
-                    icon={<Tag className="h-4 w-4" />}
-                  />
-                  <DetailCard
-                    title="Technique"
-                    content={artwork.technique}
-                    icon={<Brush className="h-4 w-4" />}
-                  />
-                  <DetailCard
-                    title="Material"
-                    content={artwork.material}
-                    icon={<Tag className="h-4 w-4" />}
-                  />
-                  <DetailCard
-                    title="Period"
-                    content={artwork.period}
-                    icon={<Calendar className="h-4 w-4" />}
-                  />
-                </div>
-              </div>
-
-              {artwork.tags && (
-                <>
-                  <Separator />
-                  <div className="rounded-lg bg-white p-6 shadow-sm">
-                    <h3 className="mb-4 font-semibold">Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {artwork.tags.split(",").map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="outline"
-                          className="gap-1 bg-gray-50"
-                        >
-                          <Tag className="h-3 w-3" />
-                          {tag.trim()}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              </ScrollArea>
             </div>
-          </ScrollArea>
+          ) : (
+            // Vertical Layout (unchanged)
+            <div className="grid gap-12 lg:grid-cols-2">
+              <div ref={containerRef} className="relative">
+                <ImageViewer artwork={artwork} />
+              </div>
+  
+              <ScrollArea className="h-[calc(100vh-8rem)]">
+                <DetailsContent
+                  artwork={artwork}
+                  isFavorite={isFavorite}
+                  setIsFavorite={setIsFavorite}
+                  isHorizontal={false}
+                />
+              </ScrollArea>
+            </div>
+          )}
+        </div>
+  
+        <div className="container mx-auto mt-16 px-4">
+          <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
+          <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
         </div>
       </div>
-
-      <div className="container mx-auto mt-16 px-4">
-        <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
-        <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
-      </div>
-    </div>
-  );
-}
+    );
+  }

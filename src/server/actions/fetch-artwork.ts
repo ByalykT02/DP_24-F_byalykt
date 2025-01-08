@@ -70,6 +70,10 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
 function processArtworkData(artwork: ArtworkDetailed): ArtworkDetailed {
   return {
     ...artwork,
+
+    description:
+      artwork.description?.replace(/\[.*?\]/g, "").trim() ||
+      FALLBACK_ARTWORK.description,
     image:
       artwork.image?.replace(
         /!(Large|Portrait|Square|PinterestSmall)\.jpg$/,
@@ -86,8 +90,8 @@ export async function fetchArtwork(
       `/App/Painting/ImageJson/${contentId}`,
     );
 
-    // return processArtworkData(artwork);
-    return artwork;
+    return processArtworkData(artwork);
+    // return artwork;
   } catch (error) {
     console.error("Error fetching artwork:", error);
     return FALLBACK_ARTWORK;

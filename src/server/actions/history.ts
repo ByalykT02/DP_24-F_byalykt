@@ -18,7 +18,7 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
   try {
     // Ensure the artwork exists in the database
     const artworkResult = await upsertArtwork(artwork);
-    console.log("artworkResult", artworkResult);
+    console.log("artworkResult", artwork);
     if (!artworkResult.success) {
       logger.error('Failed to ensure artwork exists', {
         ...logContext,
