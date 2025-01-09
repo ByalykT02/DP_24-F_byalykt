@@ -8,17 +8,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Button } from "~/components/ui/button";
 import { addToHistory } from "~/server/actions/history";
-import {
-  Share2,
-  ArrowLeft,
-  Eye,
-  MapPin,
-  Calendar,
-  Tag,
-  Brush,
-  Ruler,
-  X,
-} from "lucide-react";
+import { Share2, ArrowLeft, MapPin, Calendar, Tag, Brush } from "lucide-react";
 import Image from "next/image";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { fetchArtwork } from "~/server/actions/fetch-artwork";
@@ -80,7 +70,7 @@ const DetailCard = ({ title, content, icon }: DetailCardProps) => {
 const ImageControls = () => {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   return (
-    <>
+    <div className="flex w-1/4 flex-row justify-between">
       <Button
         variant="secondary"
         size="sm"
@@ -106,12 +96,12 @@ const ImageControls = () => {
       >
         Reset
       </Button>
-    </>
+    </div>
   );
 };
 
 const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
-  <Card className="overflow-hidden bg-black/5 backdrop-blur-sm">
+  <Card className="mx-auto max-w-6xl overflow-hidden bg-black/5 backdrop-blur-sm">
     <TransformWrapper>
       <AnimatePresence>
         <motion.div
@@ -119,7 +109,7 @@ const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="relative h-full"
+          className="relative flex h-full justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           {artwork.image && (
@@ -186,8 +176,13 @@ const useArtworkData = (id: string, userId?: string) => {
   return { artwork, isLoading, error };
 };
 
-const TitleSection = ({ artwork, isFavorite, setIsFavorite, isHorizontal }: { 
-  artwork: ArtworkDetailed; 
+const TitleSection = ({
+  artwork,
+  isFavorite,
+  setIsFavorite,
+  isHorizontal,
+}: {
+  artwork: ArtworkDetailed;
   isFavorite: boolean;
   setIsFavorite: (state: boolean) => void;
   isHorizontal: boolean;
@@ -230,9 +225,9 @@ const DetailsContent = ({
   return (
     <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"}`}>
       {showTitle && (
-        <TitleSection 
-          artwork={artwork} 
-          isFavorite={isFavorite} 
+        <TitleSection
+          artwork={artwork}
+          isFavorite={isFavorite}
           setIsFavorite={setIsFavorite}
           isHorizontal={isHorizontal}
         />
@@ -449,87 +444,88 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
   }
 
   return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
-        <div className="container mx-auto max-w-7xl px-4 py-8">
-          <div className="mb-6 flex items-center justify-between">
-            <Button
-              onClick={() => router.back()}
-              variant="ghost"
-              className="gap-2"
-              aria-label="Go back to previous page"
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <Button
+            onClick={() => router.back()}
+            variant="ghost"
+            className="gap-2"
+            aria-label="Go back to previous page"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={handleShare}
+            aria-label="Share artwork"
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
+        </div>
+
+        <ShareDialog
+          isOpen={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          type="artwork"
+          name={artwork.title}
+          id={artwork.contentId}
+        />
+
+        {isHorizontal ? (
+          <div className="space-y-8">
+            <TitleSection
+              artwork={artwork}
+              isFavorite={isFavorite}
+              setIsFavorite={setIsFavorite}
+              isHorizontal={true}
+            />
+
+            <div
+              ref={containerRef}
+              className="relative flex w-full justify-center bg-gray-50"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleShare}
-              aria-label="Share artwork"
-            >
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          </div>
-  
-          <ShareDialog
-            isOpen={isShareDialogOpen}
-            onOpenChange={setIsShareDialogOpen}
-            type="artwork"
-            name={artwork.title}
-            id={artwork.contentId}
-          />
-  
-          {isHorizontal ? (
-            // Horizontal Layout
-            <div className="space-y-8">
-              {/* Title at the top with buttons */}
-              <TitleSection 
-                artwork={artwork} 
+              <div className="max-w-6xl">
+                <ImageViewer artwork={artwork} />
+              </div>
+            </div>
+
+            <ScrollArea className="h-auto">
+              <DetailsContent
+                artwork={artwork}
                 isFavorite={isFavorite}
                 setIsFavorite={setIsFavorite}
                 isHorizontal={true}
+                showTitle={false}
               />
-  
-              {/* Image */}
-              <div ref={containerRef} className="relative">
-                <ImageViewer artwork={artwork} />
-              </div>
-  
-              {/* Details below */}
-              <ScrollArea className="h-auto">
-                <DetailsContent
-                  artwork={artwork}
-                  isFavorite={isFavorite}
-                  setIsFavorite={setIsFavorite}
-                  isHorizontal={true}
-                  showTitle={false}
-                />
-              </ScrollArea>
+            </ScrollArea>
+          </div>
+        ) : (
+          // Vertical Layout (unchanged)
+          <div className="grid gap-12 lg:grid-cols-2">
+            <div ref={containerRef} className="relative">
+              <ImageViewer artwork={artwork} />
             </div>
-          ) : (
-            // Vertical Layout (unchanged)
-            <div className="grid gap-12 lg:grid-cols-2">
-              <div ref={containerRef} className="relative">
-                <ImageViewer artwork={artwork} />
-              </div>
-  
-              <ScrollArea className="h-[calc(100vh-8rem)]">
-                <DetailsContent
-                  artwork={artwork}
-                  isFavorite={isFavorite}
-                  setIsFavorite={setIsFavorite}
-                  isHorizontal={false}
-                />
-              </ScrollArea>
-            </div>
-          )}
-        </div>
-  
-        <div className="container mx-auto mt-16 px-4">
-          <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
-          <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
-        </div>
+
+            <ScrollArea className="h-[calc(100vh-8rem)]">
+              <DetailsContent
+                artwork={artwork}
+                isFavorite={isFavorite}
+                setIsFavorite={setIsFavorite}
+                isHorizontal={false}
+              />
+            </ScrollArea>
+          </div>
+        )}
       </div>
-    );
-  }
+
+      <div className="container mx-auto mt-16 px-4">
+        <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
+        <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
+      </div>
+    </div>
+  );
+}

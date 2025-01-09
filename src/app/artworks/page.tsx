@@ -5,10 +5,11 @@ import { Artwork } from "~/lib/types/artwork";
 import { Loading } from "~/components/ui/loading";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Frame } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { fetchRandomArtworks } from "~/server/actions/fetch-artworks";
+import { motion } from "framer-motion";
 
 export default function ArtworksPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
@@ -16,7 +17,7 @@ export default function ArtworksPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
+
   const loadingRef = useRef(false);
 
   const loadArtworks = useCallback(async (page: number = 1) => {
@@ -26,8 +27,12 @@ export default function ArtworksPage() {
       setIsLoading(true);
       loadingRef.current = true;
       setError(null);
-      
-      const {artworks: data, totalPages: pages, currentPage} = await fetchRandomArtworks(page);
+
+      const {
+        artworks: data,
+        totalPages: pages,
+        currentPage,
+      } = await fetchRandomArtworks(page);
       setArtworks(data);
       setCurrentPage(currentPage);
       setTotalPages(pages);
@@ -44,18 +49,31 @@ export default function ArtworksPage() {
     void loadArtworks();
   }, [loadArtworks]);
 
+  const goToTop = () => {
+    document.documentElement.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   const handlePageChange = (newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
       void loadArtworks(newPage);
     }
-  }
-  
+  };
+
   if (error) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-        <div className="text-center">
-          <p className="mb-4 text-red-600">{error}</p>
-          <Button onClick={() => void loadArtworks()}>Try Again</Button>
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gray-50 p-4">
+        <div className="space-y-4 text-center">
+          <Frame className="mx-auto h-16 w-16 text-red-500" />
+          <p className="text-lg font-medium text-gray-900">{error}</p>
+          <Button
+            onClick={() => void loadArtworks()}
+            className="bg-primary hover:bg-primary/90"
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -64,22 +82,13 @@ export default function ArtworksPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
       {isLoading && <Loading />}
-      
+
       <div className="container mx-auto px-4">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Popular Artworks</h1>
-          {/* <Button
-            onClick={() => void loadArtworks()}
-            variant="outline"
-            className="gap-2"
-            disabled={isLoading}
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Refresh
-          </Button> */}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {artworks.map((artwork) => (
             <Link
               key={artwork.contentId}
@@ -97,7 +106,9 @@ export default function ArtworksPage() {
                   />
                 </div>
                 <CardContent className="p-4">
-                  <h2 className="font-semibold line-clamp-1">{artwork.title}</h2>
+                  <h2 className="line-clamp-1 font-semibold">
+                    {artwork.title}
+                  </h2>
                   <p className="text-sm text-muted-foreground">
                     {artwork.artistName}
                   </p>
@@ -109,28 +120,34 @@ export default function ArtworksPage() {
             </Link>
           ))}
         </div>
-        
-        <div className="flex justify-center items-center space-x-4">
+
+        <div className="flex items-center justify-center space-x-4">
           <Button
-            onClick={() => handlePageChange(currentPage - 1)}
+            onClick={() => {
+              handlePageChange(currentPage - 1);
+              goToTop();
+            }}
             disabled={currentPage === 1 || isLoading}
             variant="outline"
           >
-            <ChevronLeft className="h-4 w-4 mr-2" />
+            <ChevronLeft className="mr-2 h-4 w-4" />
             Previous
           </Button>
-          
+
           <span className="text-sm text-muted-foreground">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <Button
-            onClick={() => handlePageChange(currentPage + 1)}
+            onClick={() => {
+              handlePageChange(currentPage + 1);
+              goToTop();
+            }}
             disabled={currentPage === totalPages || isLoading}
             variant="outline"
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-2" />
+            <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </div>
