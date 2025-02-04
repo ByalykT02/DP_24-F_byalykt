@@ -12,34 +12,6 @@ A modern web application for exploring fine art collections, built with Next.js 
 - Server-side rendering for improved performance
 - Authentication system using NextAuth.js
 
-## Planned Features & Improvements
-
-### Authentication & User Experience
-- [x] Complete authentication system implementation
-- [x] User browsing history
-- [x] Personal collections and favorites
-- [ ] User preferences and settings
-- [ ] Artwork comments and ratings
-
-### Search & Discovery
-- [ ] Advanced search functionality with filters
-- [ ] Similar artists and artworks recommendations
-- [ ] Art style and period categorization
-- [ ] Intelligent search engine with auto-suggestions
-
-### Content & Recommendations
-- [ ] Personalized artwork recommendations
-- [ ] Curated collections and exhibitions
-- [ ] Art movement exploration guides
-- [ ] Related artworks suggestions
-
-### Technical Improvements
-- [ ] Code refactoring and optimization
-- [ ] Performance improvements
-- [ ] Better error handling
-- [ ] Enhanced caching strategy
-- [ ] Comprehensive testing implementation
-
 ## Tech Stack
 
 - **Frontend:** Next.js 14, TypeScript, TailwindCSS
@@ -104,41 +76,64 @@ npm run dev
 
 ```
 src/
-├── app/                 # Next.js app router pages
+├── app/
+│   ├── (protected)/     # Protected routes (collections, profile, etc.)
+│   ├── (public)/        # Public routes (explore, categories)
 │   ├── api/            # API routes
 │   ├── artists/        # Artist-related pages
 │   ├── artworks/       # Artwork-related pages
-│   └── about/          # Static pages
-├── components/         
-│   ├── common/         # Shared components (Header, Footer)
-│   ├── home/           # Homepage-specific components
-│   └── ui/             # Reusable UI components
-├── lib/                
+│   └── auth/           # Authentication pages
+├── components/
+│   ├── auth/           # Authentication components
+│   ├── collections/    # Collection-related components
+│   ├── common/         # Shared components
+│   ├── form/           # Form components
+│   ├── home/           # Homepage components
+│   ├── preferences/    # User preference components
+│   ├── profile/        # Profile management components
+│   ├── recommendations/# Recommendation components
+│   ├── search/         # Search components
+│   └── ui/             # UI components
+├── hooks/              # Custom React hooks
+├── lib/
 │   ├── types/          # TypeScript interfaces
-│   └── utils.ts        # Utility functions
-└── server/             
-    ├── actions/        # Server actions for data fetching
-    └── db/             # Database configuration and queries
+│   └── utils/          # Utility functions
+└── server/
+    ├── actions/        # Server actions
+    └── db/             # Database configuration
 ```
 
 ## Key Features Details
+
+### Collections Management
+- Create and manage personal collections
+- Toggle collection visibility (public/private)
+- Add/remove artworks from collections
+- Browse public collections from other users
+
+### User Profile System
+- Edit profile information
+- Change password securely
+- View personal favorites
+- Track viewing history
+- Manage collections
+
+### Search Functionality
+- Real-time artwork and artist search
+- Search results categorization
+- Quick navigation to results
+
+### Artwork Discovery
+- Browse popular artworks
+- View detailed artwork information
+- Similar artwork recommendations
+- High-resolution image viewing
 
 ### Artist Exploration
 - Browse popular artists with biographical information
 - View artist's complete artwork collection
 - Timeline of artist's periods and career
 - Related artists and influences
-
-### Artwork Discovery
-- Artwork viewing with zoom capability
-- Detailed artwork information including style, period, and technique
-- Similar artwork recommendations
-- Responsive image loading with fallbacks
-
-### User Interface
-- Modern, responsive design
-- Intuitive navigation
-- Quick loading states and smooth transitions
 
 ## Development
 
