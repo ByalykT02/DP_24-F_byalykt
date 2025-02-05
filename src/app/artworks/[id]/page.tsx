@@ -70,11 +70,11 @@ const DetailCard = ({ title, content, icon }: DetailCardProps) => {
 const ImageControls = () => {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   return (
-    <div className="flex w-1/4 flex-row justify-between">
+    <div className="flex gap-x-2">
       <Button
         variant="secondary"
         size="sm"
-        className="gap-2"
+        className="gap-2 hover:bg-red-500"
         onClick={() => zoomIn()}
       >
         Zoom In
@@ -129,12 +129,16 @@ const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
       </AnimatePresence>
 
       <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <Badge variant="secondary" className="gap-1">
-            {artwork.width} x {artwork.height}
-          </Badge>
+        <div className="flex">
+          <div className="w-1/2">
+            <Badge variant="secondary" className="h-full">
+              {artwork.width} x {artwork.height}
+            </Badge>
+          </div>
 
-          <ImageControls />
+          <div className="w-1/2 flex justify-end">
+            <ImageControls />
+          </div>
         </div>
       </div>
     </TransformWrapper>
@@ -223,7 +227,7 @@ const DetailsContent = ({
   showTitle?: boolean;
 }) => {
   return (
-    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"}`}>
+    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"} h-full`}>
       {showTitle && (
         <TitleSection
           artwork={artwork}
@@ -339,7 +343,7 @@ const useImageDimensions = (artwork?: ArtworkDetailed) => {
       width = maxHeight * aspectRatio;
     }
 
-    setDimensions({ width, height });
+      setDimensions({ width, height: height + 56 });
   }, [artwork?.width, artwork?.height]);
 
   useEffect(() => {
@@ -493,7 +497,9 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
               </div>
             </div>
 
-            <ScrollArea className="h-auto">
+            <ScrollArea 
+                style={{height: dimensions.height }}
+                className="rounded-lg border bg-background shadow-sm">
               <DetailsContent
                 artwork={artwork}
                 isFavorite={isFavorite}
