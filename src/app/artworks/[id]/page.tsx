@@ -227,7 +227,7 @@ const DetailsContent = ({
   showTitle?: boolean;
 }) => {
   return (
-    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"}`}>
+    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"} h-full`}>
       {showTitle && (
         <TitleSection
           artwork={artwork}
@@ -343,7 +343,7 @@ const useImageDimensions = (artwork?: ArtworkDetailed) => {
       width = maxHeight * aspectRatio;
     }
 
-    setDimensions({ width, height });
+      setDimensions({ width, height: height + 56 });
   }, [artwork?.width, artwork?.height]);
 
   useEffect(() => {
@@ -497,7 +497,9 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
               </div>
             </div>
 
-            <ScrollArea className="h-auto">
+            <ScrollArea 
+                style={{height: dimensions.height }}
+                className="rounded-lg border bg-background shadow-sm">
               <DetailsContent
                 artwork={artwork}
                 isFavorite={isFavorite}
