@@ -23,8 +23,8 @@ export default function CategoryPage({ params }: CategoryGroupPageProps) {
     const loadCategoryGroup = async () => {
       try {
         const typeId = parseInt(params.type);
-        const details = await getCategoryDetails(typeId, params.slug);
-        setCategory(details);
+        // const details = await getCategoryDetails(typeId, params.slug);
+        // setCategory(details);
         
         // Here you would also fetch artworks for this category
         // using your existing artwork fetching logic
@@ -37,7 +37,7 @@ export default function CategoryPage({ params }: CategoryGroupPageProps) {
     };
 
     void loadCategoryGroup();
-  }, [params.type, params.slug]);
+  }, [params.type]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -60,7 +60,7 @@ export default function CategoryPage({ params }: CategoryGroupPageProps) {
 
       <h1 className="mb-8 text-3xl font-bold">{category.title}</h1>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {artworks.map((artwork) => (
           <Link
             key={artwork.id}
@@ -85,7 +85,7 @@ export default function CategoryPage({ params }: CategoryGroupPageProps) {
             </Card>
           </Link>
         ))}
-      </div>
+      </div> */}
     </div>
   );
 }
