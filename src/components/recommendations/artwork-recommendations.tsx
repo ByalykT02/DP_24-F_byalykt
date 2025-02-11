@@ -70,6 +70,7 @@ export function ArtworkRecommendations({
                 className="object-cover"
                 sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                 priority
+                quality={80}
                 />
             </div>
             <CardContent className="p-4">
