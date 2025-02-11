@@ -3,7 +3,7 @@
 import { Artwork } from "~/lib/types/artwork";
 import { db } from "../db";
 import { artworks } from "../db/schema";
-import { sql } from "drizzle-orm";
+import { asc, desc, sql } from "drizzle-orm";
 import { fetchWikiArtApi } from "./fetch-api";
 
 // Fallback data
@@ -38,7 +38,7 @@ function processArtwork(artwork: Artwork): Artwork {
   };
 }
 
-// Main export
+// Deprecated: random artowks from the DataArt API
 export async function fetchRandomArtworks(
   page: number = 1,
   pageSize: number = 15,
@@ -68,6 +68,54 @@ export async function fetchRandomArtworks(
     // return dbArtworks;
   } catch (error) {
     console.error("Error fetching random artworks:", error);
+    return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
+  }
+}
+
+export async function fetchArtworksFromDB(
+  page: number = 1,
+  pageSize: number = 15,
+): Promise<{
+  artworks: Artwork[];
+  totalPages: number;
+  currentPage: number;
+}> {
+  try {
+    const totalCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(artworks);
+
+    const totalCount = Number(totalCountResult[0]?.count ?? 0);
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    const dbArtworks = await db
+      .select()
+      .from(artworks)
+      .orderBy(asc(artworks.updatedAt) )
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    const processedArtworks = dbArtworks
+      .map((artwork) => ({
+        title: artwork.title,
+        contentId: artwork.contentId,
+        artistContentId: artwork.artistContentId,
+        artistName: artwork.artistName,
+        completitionYear: artwork.completitionYear ?? undefined,
+        yearAsString: artwork.yearAsString ?? undefined,
+        width: Number(artwork.width) ?? undefined,
+        height: Number(artwork.height) ?? undefined,
+        image: artwork.image,
+      }))
+      .map(processArtwork);
+
+    return {
+      artworks: processedArtworks,
+      totalPages,
+      currentPage: page,
+    };
+  } catch (error) {
+    console.error("Error fetching random artworks from database:", error);
     return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
   }
 }

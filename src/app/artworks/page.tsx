@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { ChevronLeft, ChevronRight, Frame } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { fetchRandomArtworks } from "~/server/actions/fetch-artworks";
+import { fetchArtworksFromDB } from "~/server/actions/fetch-artworks";
 import { motion } from "framer-motion";
 
 export default function ArtworksPage() {
@@ -32,7 +32,7 @@ export default function ArtworksPage() {
         artworks: data,
         totalPages: pages,
         currentPage,
-      } = await fetchRandomArtworks(page);
+      } = await fetchArtworksFromDB(page);
       setArtworks(data);
       setCurrentPage(currentPage);
       setTotalPages(pages);
