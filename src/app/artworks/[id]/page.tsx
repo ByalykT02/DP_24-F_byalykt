@@ -120,7 +120,8 @@ const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
                 width={Number(artwork.width) ?? 1200}
                 height={Number(artwork.height) ?? 800}
                 className="object-contain"
-                priority
+                    loading="lazy"
+                      quality={80}
                 sizes="90vw"
               />
             </TransformComponent>

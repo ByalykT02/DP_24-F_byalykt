@@ -7,18 +7,11 @@ import { LoginRouteButton } from "./login-route-button";
 import { UserMenu } from "./user-menu";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { SearchPopover } from "../search/search-commands";
 
 export default function Header() {
   const { data: session, status } = useSession();
   const router = useRouter();
-
-  useEffect(() => {
-    if (status === "authenticated" || status === "unauthenticated") {
-      router.refresh();
-    }
-  }, [status, router]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

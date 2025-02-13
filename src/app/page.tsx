@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Artwork } from "~/lib/types/artwork";
 import { Loading } from "~/components/ui/loading";
-import ArtCategories from "~/components/home/art-categories";
 import Hero from "~/components/home/hero";
 import ArtworkTiles from "~/components/home/arwork-tiles";
 import { fetchArtworks } from "~/server/actions/fetch-artworks-home";
@@ -38,7 +37,6 @@ const MainPage = () => {
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
         <Hero artworks={results} />
         <ArtworkTiles artworks={results} />
-        <ArtCategories />
       </div>
     </>
   );

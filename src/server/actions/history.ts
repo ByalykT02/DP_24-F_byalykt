@@ -10,7 +10,7 @@ import { logger } from "~/utils/logger";
 // Add artwork to viewing history
 export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
   const logContext = {
-    action: 'addToHistory',
+    action: "addToHistory",
     userId,
     artworkId: artwork.contentId,
   };
@@ -20,13 +20,13 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
     const artworkResult = await upsertArtwork(artwork);
     console.log("artworkResult", artwork);
     if (!artworkResult.success) {
-      logger.error('Failed to ensure artwork exists', {
+      logger.error("Failed to ensure artwork exists", {
         ...logContext,
         error: artworkResult.error,
       });
-      return { 
-        success: false, 
-        error: 'Failed to ensure artwork exists in database',
+      return {
+        success: false,
+        error: "Failed to ensure artwork exists in database",
       };
     }
 
@@ -38,8 +38,8 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
         and(
           eq(viewingHistory.userId, userId),
           eq(viewingHistory.artworkId, artwork.contentId),
-          sql`${viewingHistory.viewedAt} > NOW() - INTERVAL '1 minute'`
-        )
+          sql`${viewingHistory.viewedAt} > NOW() - INTERVAL '1 minute'`,
+        ),
       )
       .limit(1);
 
@@ -51,10 +51,10 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
       });
 
       if (!existingArtwork) {
-        logger.error('Artwork not found in database', logContext);
+        logger.error("Artwork not found in database", logContext);
         return {
           success: false,
-          error: 'Artwork not found in database',
+          error: "Artwork not found in database",
         };
       }
 
@@ -64,30 +64,33 @@ export async function addToHistory(userId: string, artwork: ArtworkDetailed) {
         viewedAt: new Date(),
       });
 
-      logger.info('Successfully added to history', logContext);
+      logger.info("Successfully added to history", logContext);
     } else {
-      logger.info('Recent view exists, skipping insert', logContext);
+      logger.info("Recent view exists, skipping insert", logContext);
     }
 
     return { success: true };
-
   } catch (error) {
-    logger.error('Failed to add to history', {
+    logger.error("Failed to add to history", {
       ...logContext,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
     });
 
     return {
       success: false,
-      error: 'Failed to add to viewing history',
+      error: "Failed to add to viewing history",
       details: error instanceof Error ? error.message : undefined,
     };
   }
 }
 
 // Get viewing history for a user
-export async function getViewingHistory(userId: string) {
+export async function getViewingHistory(
+  userId: string,
+  page = 1,
+  pageSize = 20,
+) {
   try {
     const history = await db
       .select({
@@ -110,10 +113,10 @@ export async function getViewingHistory(userId: string) {
       .innerJoin(artists, eq(artworks.artistContentId, artists.contentId))
       .where(eq(viewingHistory.userId, userId))
       .orderBy(desc(viewingHistory.viewedAt))
-      .limit(50);
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);2
 
     return history;
-
   } catch (error) {
     console.error("Failed to get viewing history:", error);
     return [];
