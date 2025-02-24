@@ -1,6 +1,9 @@
 "use server";
 import { Artist } from "~/lib/types/artist";
 import { fetchWikiArtApi } from "./fetch-api";
+import { artists } from "../db/schema";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 
 // Fallback data
@@ -45,24 +48,28 @@ export async function fetchPopularArtists(
   currentPage: number;
 }> {
   try {
-    const allArtists = await fetchWikiArtApi<Artist[]>(
-      "/app/api/popularartists?json=1",
-    );
+    // Get total number of artists
+    const totalArtistsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(artists);
+      
+    const totalArtists = totalArtistsResult[0]?.count ?? 0;
 
-    // Process and shuffle the artists
-    // const processedArtists = shuffleArray(allArtists).map(processArtist);
-    const processedArtists = allArtists.map(processArtist);
+    // Fetch paginated artists with random ordering
+    const paginatedArtists = await db
+      .select()
+      .from(artists)
+      .orderBy(artists.createdAt)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
 
-    // Calculate pagination
-    const totalPages = Math.ceil(processedArtists.length / pageSize);
-    const startIndex = (page - 1) * pageSize;
-    const paginatedArtists = processedArtists.slice(
-      startIndex,
-      startIndex + pageSize,
-    );
+    // Process image URLs
+    // const processedArtists = paginatedArtists.map(processArtist);
+
+    const totalPages = Math.ceil(totalArtists / pageSize);
 
     return {
-      artists: paginatedArtists,
+      artists: paginatedArtists as Artist[],
       totalPages,
       currentPage: page,
     };
