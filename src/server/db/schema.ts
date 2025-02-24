@@ -114,7 +114,7 @@ export const verificationTokens = createTable(
 export const artists = createTable("artist", {
   contentId: integer("content_id").primaryKey(),
   artistName: varchar("artist_name", { length: 255 }).notNull(),
-  url: varchar("url", { length: 255 }),
+  url: varchar("url", { length: 255 }).notNull(),
   lastNameFirst: varchar("last_name_first", { length: 255 }),
   birthDay: date("birth_day"),
   deathDay: date("death_day"),
@@ -133,6 +133,7 @@ export const artists = createTable("artist", {
   wikipediaUrl: varchar("wikipedia_url", { length: 1000 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  dictionaries: json("dictionaries"),
 });
 
 // Artworks table
