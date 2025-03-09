@@ -114,7 +114,7 @@ export async function getViewingHistory(
       .where(eq(viewingHistory.userId, userId))
       .orderBy(desc(viewingHistory.viewedAt))
       .limit(pageSize)
-      .offset((page - 1) * pageSize);2
+      .offset((page - 1) * pageSize);
 
     return history;
   } catch (error) {
