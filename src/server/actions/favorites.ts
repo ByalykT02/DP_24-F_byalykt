@@ -1,77 +1,99 @@
 "use server";
 
-import { desc, eq, and } from "drizzle-orm";
+import { desc, eq, and, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { userInteractions, artworks, artists } from "~/server/db/schema";
-import { logging } from "~/utils/logger";
+import { logger } from "~/utils/logger";
 import { ApiResponse } from "~/lib/types/api";
 import {
   UserFavorites,
   ToggleFavorite,
   ToggleFavoriteParams,
-  UserFavorite,
 } from "~/lib/types/favorite";
 
 /**
- * Toggle favorite status for an artwork
+ * Toggle favorite status for an artwork using an efficient upsert pattern
  */
 export async function toggleFavorite(
   params: ToggleFavoriteParams,
 ): Promise<ApiResponse<ToggleFavorite>> {
-  const logger = logging.child({
+  const log = logger.child({
     action: "toggleFavorite",
     userId: params.userId,
     artworkId: params.artworkId,
   });
 
+  // Validate inputs
+  if (!params.userId || !params.artworkId) {
+    log.warn("Invalid inputs", { params });
+    return {
+      success: false,
+      error: "Missing required parameters",
+    };
+  }
+
   try {
-    // Check if the artwork is already favorited
-    const existingFavorite = await db
-      .select()
-      .from(userInteractions)
-      .where(
-        and(
-          eq(userInteractions.userId, params.userId),
-          eq(userInteractions.artworkId, params.artworkId),
-        ),
-      )
-      .limit(1);
-
-    let result;
-
-    if (existingFavorite[0]) {
-      const newStatus = !existingFavorite[0]?.isFavorite;
-      await db
-        .update(userInteractions)
-        .set({
-          isFavorite: newStatus,
-          updatedAt: new Date(),
+    // Use transaction for consistency
+    return await db.transaction(async (tx) => {
+      // Check if the interaction exists
+      const existingInteraction = await tx
+        .select({
+          id: userInteractions.id,
+          isFavorite: userInteractions.isFavorite,
         })
-        .where(eq(userInteractions.id, existingFavorite[0].id));
+        .from(userInteractions)
+        .where(
+          and(
+            eq(userInteractions.userId, params.userId),
+            eq(userInteractions.artworkId, params.artworkId),
+          ),
+        )
+        .limit(1)
+        .then(rows => rows[0]);
 
-      result = { success: true, data: { isFavorite: newStatus } };
-      logger.info("Favorite status updated successfully", result);
-    } else {
-      await db.insert(userInteractions).values({
-        userId: params.userId,
-        artworkId: params.artworkId,
-        isFavorite: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      let isFavorite: boolean;
+      
+      if (existingInteraction) {
+        // Update existing interaction
+        isFavorite = !existingInteraction.isFavorite;
+        
+        await tx
+          .update(userInteractions)
+          .set({
+            isFavorite,
+            updatedAt: new Date(),
+          })
+          .where(eq(userInteractions.id, existingInteraction.id));
+          
+        log.info("Favorite status updated", { 
+          interactionId: existingInteraction.id,
+          newStatus: isFavorite 
+        });
+      } else {
+        // Create new interaction with favorite flag
+        isFavorite = true;
+        
+        await tx.insert(userInteractions).values({
+          userId: params.userId,
+          artworkId: params.artworkId,
+          isFavorite,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        
+        log.info("New favorite created", { isFavorite });
+      }
 
-      result = { success: true, data: { isFavorite: true } };
-      logger.info("New favorite created successfully", result);
-    }
-
-    return result;
+      return { 
+        success: true, 
+        data: { isFavorite } 
+      };
+    });
   } catch (error) {
-    logger.error("Failed to toggle favorite", error);
-    if (error instanceof Error) {
-      logging.error("Failed to toggle favorite", error);
-    } else {
-      logging.error("Failed to toggle favorite", { message: String(error) });
-    }
+    log.error("Failed to toggle favorite", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     return {
       success: false,
@@ -81,23 +103,58 @@ export async function toggleFavorite(
 }
 
 /**
- * Get all favorites for a user
+ * Get all favorites for a user with pagination support
  */
 export async function getFavorites(
   userId: string,
+  page = 1,
+  pageSize = 20,
 ): Promise<ApiResponse<UserFavorites>> {
-  const logger = logging.child({
+  const log = logger.child({
     action: "getFavorites",
     userId,
+    page,
+    pageSize,
   });
 
   try {
+    // Validate inputs
+    if (!userId) {
+      return {
+        success: false,
+        error: "User ID is required",
+      };
+    }
+
+    // Calculate pagination offsets
+    const offset = (page - 1) * pageSize;
+
+    // Select only necessary fields for better performance
     const favorites = await db
       .select({
         id: userInteractions.id,
-        artwork: artworks,
-        artist: artists,
         createdAt: userInteractions.createdAt,
+        artwork: {
+          contentId: artworks.contentId,
+          title: artworks.title,
+          image: artworks.image,
+          completitionYear: artworks.completitionYear,
+          yearAsString: artworks.yearAsString,
+          artistContentId: artworks.artistContentId,
+          // Include other essential fields but avoid overfetching
+          style: artworks.style,
+          genre: artworks.genre,
+          period: artworks.period,
+        },
+        artist: {
+          contentId: artists.contentId,
+          artistName: artists.artistName,
+          image: artists.image,
+          url: artists.url,
+          // Include other essential fields but avoid overfetching
+          birthDayAsString: artists.birthDayAsString,
+          deathDayAsString: artists.deathDayAsString,
+        },
       })
       .from(userInteractions)
       .innerJoin(artworks, eq(userInteractions.artworkId, artworks.contentId))
@@ -108,20 +165,25 @@ export async function getFavorites(
           eq(userInteractions.isFavorite, true),
         ),
       )
-      .orderBy(desc(userInteractions.createdAt));
+      .orderBy(desc(userInteractions.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-    logger.info(`Retrieved ${favorites.length} favorites`);
-    return { success: true, data: favorites };
+    log.info("Retrieved favorites", { count: favorites.length, page, pageSize });
+    
+    return { 
+      success: true, 
+      data: favorites,
+    };
   } catch (error) {
-    logger.error("Failed to get favorite", error);
-    if (error instanceof Error) {
-      logging.error("Failed to get favorite", error);
-    } else {
-      logging.error("Failed to get favorite", { message: String(error) });
-    }
+    log.error("Failed to get favorites", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return {
       success: false,
-      error: "Failed to toggle favorite status",
+      error: "Failed to retrieve favorites",
     };
   }
 }
@@ -129,30 +191,59 @@ export async function getFavorites(
 /**
  * Clear all favorites for a user
  */
-export async function clearFavorites(userId: string):Promise<ApiResponse<void>> {
-  const logger = logging.child({
+export async function clearFavorites(userId: string): Promise<ApiResponse<void>> {
+  const log = logger.child({
     action: "clearFavorites",
     userId,
   });
 
-  try {
-    await db
-      .update(userInteractions)
-      .set({
-        isFavorite: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(userInteractions.userId, userId));
+  // Validate input
+  if (!userId) {
+    return {
+      success: false,
+      error: "User ID is required",
+    };
+  }
 
-    logger.info("Favorites cleared successfully");
+  try {
+    // Get count of favorites before clearing for logging
+    const { count } = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(userInteractions)
+      .where(
+        and(
+          eq(userInteractions.userId, userId),
+          eq(userInteractions.isFavorite, true),
+        ),
+      )
+      .then(rows => rows[0] || { count: 0 });
+
+    // Use transaction for atomic operation
+    await db.transaction(async (tx) => {
+      await tx
+        .update(userInteractions)
+        .set({
+          isFavorite: false,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(userInteractions.userId, userId),
+            eq(userInteractions.isFavorite, true),
+          )
+        );
+    });
+
+    log.info("Favorites cleared successfully", { clearedCount: count });
     return { success: true };
   } catch (error) {
-    logger.error("Failed to clear favorites", error);
-    if (error instanceof Error) {
-      logging.error("Failed to clear favorites", error);
-    } else {
-      logging.error("Failed to clear favorites", { message: String(error) });
-    }
+    log.error("Failed to clear favorites", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return {
       success: false,
       error: "Failed to clear favorites",
@@ -163,42 +254,101 @@ export async function clearFavorites(userId: string):Promise<ApiResponse<void>> 
 /**
  * Check if an artwork is favorited by a user
  */
-export async function checkIsFavorite(userId: string, artworkId: number):Promise<ApiResponse<ToggleFavorite>> {
-  const logger = logging.child({
+export async function checkIsFavorite(
+  userId: string, 
+  artworkId: number
+): Promise<ApiResponse<ToggleFavorite>> {
+  const log = logger.child({
     action: "checkIsFavorite",
     userId,
     artworkId,
   });
 
-  try {
-    const favorite = await db
-      .select()
-      .from(userInteractions)
-      .where(
-        and(
-          eq(userInteractions.userId, userId),
-          eq(userInteractions.artworkId, artworkId),
-          eq(userInteractions.isFavorite, true),
-        ),
-      )
-      .limit(1);
+  // Validate inputs
+  if (!userId || !artworkId) {
+    log.warn("Invalid inputs", { userId, artworkId });
+    return {
+      success: false,
+      error: "Missing required parameters",
+      data: { isFavorite: false },
+    };
+  }
 
-    const isFavorite = favorite.length > 0;
-    logger.debug("Favorite status checked", { isFavorite });
-    return { success: true, data: { isFavorite } };
+  try {
+    // Optimized query to only check existence
+    const { isFavorited } = await db
+      .select({
+        isFavorited: sql<boolean>`EXISTS (
+          SELECT 1 FROM user_interaction 
+          WHERE user_id = ${userId} 
+          AND artwork_id = ${artworkId} 
+          AND is_favorite = true
+        )`,
+      })
+      .from(userInteractions)
+      .limit(1)
+      .then(rows => rows[0] || { isFavorited: false });
+
+    log.debug("Favorite status checked", { isFavorite: isFavorited });
+    
+    return { 
+      success: true, 
+      data: { isFavorite: isFavorited } 
+    };
   } catch (error) {
-    logger.error("Failed to check favorite status", error);
-    if (error instanceof Error) {
-      logging.error("Failed to check favorite status", error);
-    } else {
-      logging.error("Failed to check favorite status", {
-        message: String(error),
-      });
-    }
+    log.error("Failed to check favorite status", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return {
       success: false,
       error: "Failed to check favorite status",
       data: { isFavorite: false },
+    };
+  }
+}
+
+/**
+ * Get favorite counts for a user
+ * Utility function to display counts on UI
+ */
+export async function getFavoritesCount(
+  userId: string
+): Promise<ApiResponse<{count: number}>> {
+  const log = logger.child({
+    action: "getFavoritesCount",
+    userId,
+  });
+
+  try {
+    const { count } = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(userInteractions)
+      .where(
+        and(
+          eq(userInteractions.userId, userId),
+          eq(userInteractions.isFavorite, true),
+        ),
+      )
+      .then(rows => rows[0] || { count: 0 });
+
+    return {
+      success: true,
+      data: { count },
+    };
+  } catch (error) {
+    log.error("Failed to get favorites count", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
+    return {
+      success: false,
+      error: "Failed to retrieve favorites count",
+      data: { count: 0 },
     };
   }
 }
