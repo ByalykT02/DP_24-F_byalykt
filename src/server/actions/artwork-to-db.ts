@@ -3,7 +3,7 @@
 import { db } from "~/server/db";
 import { artworks, artists } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
-import { logger, logging } from "~/utils/logger";
+import { logger } from "~/utils/logger";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { ApiResponse } from "~/lib/types/api";
 import { fetchArtistDetails } from "./fetch-artist";
@@ -16,20 +16,65 @@ function isValidArtist(data: {
   artistName: string;
   artistUrl: string | null;
 }): boolean {
-  if (!data.contentId || data.contentId <= 0) return false;
-  if (!data.artistName || data.artistName.trim().length === 0) return false;
-  return true;
+  return (
+    !!data.contentId && 
+    data.contentId > 0 && 
+    !!data.artistName && 
+    data.artistName.trim().length > 0
+  );
 }
 
 /**
  * Checks if the artwork data is valid
  */
 function isValidArtwork(data: ArtworkDetailed): boolean {
-  if (!data.contentId || data.contentId <= 0) return false;
-  if (!data.artistContentId || data.artistContentId <= 0) return false;
-  if (!data.title || data.title.trim().length === 0) return false;
-  if (!data.image || data.image.trim().length === 0) return false;
-  return true;
+  return (
+    !!data.contentId && 
+    data.contentId > 0 && 
+    !!data.artistContentId && 
+    data.artistContentId > 0 && 
+    !!data.title && 
+    data.title.trim().length > 0 && 
+    !!data.image && 
+    data.image.trim().length > 0
+  );
+}
+
+/**
+ * Fetches artist data with intelligent caching logic
+ * Only fetches if the artist doesn't exist or data is stale
+ */
+async function getArtistData(contentId: number, url: string | null): Promise<any> {
+  // Skip fetching if URL is missing
+  if (!url) return null;
+  
+  try {
+    // Check if artist exists and get last update time
+    const existingArtist = await db.query.artists.findFirst({
+      where: eq(artists.contentId, contentId),
+    });
+    
+    // If artist exists and was updated recently (within last 30 days), skip API call
+    if (existingArtist?.updatedAt) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      if (new Date(existingArtist.updatedAt) > thirtyDaysAgo) {
+        return null; // Use existing data
+      }
+    }
+    
+    // Fetch fresh data from API
+    const artistDetails = await fetchArtistDetails(url);
+    return artistDetails?.artist;
+  } catch (error) {
+    logger.warn("Failed to get artist data from API", { 
+      contentId, 
+      url, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    return null;
+  }
 }
 
 /**
@@ -40,7 +85,7 @@ async function upsertArtist(
   artistName: string,
   artistUrl: string | null,
 ): Promise<ApiResponse<void>> {
-  const logger = logging.child({
+  const log = logger.child({
     action: "upsertArtist",
     artistContentId,
     artistName,
@@ -48,68 +93,65 @@ async function upsertArtist(
 
   // Validate artist data
   if (!isValidArtist({ contentId: artistContentId, artistName, artistUrl })) {
-    logger.warn("Artist data validation failed", {
-      artistContentId,
-      artistName,
-    });
+    log.warn("Invalid artist data", { artistContentId, artistName });
     return {
       success: false,
       error: "Invalid artist data",
     };
   }
 
-  logger.info("Starting upsert process for artist", {
-    artistContentId,
-    artistName,
-    artistUrl,
-  });
-
   try {
-    const detailedArtist = await fetchArtistDetails(artistUrl!);
-
-    if (!detailedArtist) {
-      logger.warn("Artist details could not be fetched", { artistUrl });
+    // Try to get fresh artist data if needed
+    const artistData = await getArtistData(artistContentId, artistUrl);
+    
+    if (artistData) {
+      // If we have fresh data, use it for upsert
+      await db.insert(artists)
+        .values({
+          ...artistData,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [artists.contentId],
+          set: {
+            ...artistData,
+            updatedAt: new Date(),
+          }
+        });
+      
+      log.info("Artist updated with fresh data", { artistContentId });
     } else {
-      logger.info("Artist details successfully fetched from API", {
-        artistUrl,
+      // Check if artist exists at all
+      const existingArtist = await db.query.artists.findFirst({
+        where: eq(artists.contentId, artistContentId),
       });
-    }
-
-    const existingArtist = await db.query.artists.findFirst({
-      where: eq(artists.contentId, artistContentId),
-    });
-
-    if (!existingArtist) {
-      logger.info("No existing artist found. Creating a new record.");
-      await db
-        .insert(artists)
-        .values(detailedArtist.artist)
-        .onConflictDoNothing();
-
-      logger.info("New artist record created successfully.");
-    } else {
-      logger.info("Artist already exists. Updating the record.", {
-        existingArtistId: existingArtist.contentId,
-      });
-
-      await db
-        .update(artists)
-        .set(detailedArtist.artist)
-        .where(eq(artists.contentId, artistContentId));
-
-      logger.info("Artist record updated successfully.");
+      
+      // If no existing artist and no fresh data, create minimal record
+      if (!existingArtist) {
+        await db.insert(artists)
+          .values({
+            contentId: artistContentId,
+            artistName,
+            url: artistUrl || "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .onConflictDoNothing();
+          
+        log.info("Created minimal artist record", { artistContentId });
+      }
     }
 
     return { success: true };
   } catch (error) {
-    logger.error("An error occurred during the artist upsert process", {
-      error,
-      artistContentId,
-      artistName,
+    log.error("Failed to upsert artist", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
+    
     return {
       success: false,
-      error: "Unexpected error occurred",
+      error: "Failed to update artist record",
     };
   }
 }
@@ -121,14 +163,15 @@ async function upsertArtist(
 export async function upsertArtwork(
   artwork: ArtworkDetailed,
 ): Promise<ApiResponse<{ artworkId: number; title: string }>> {
-  const logger = logging.child({
+  const log = logger.child({
     action: "upsertArtwork",
     artworkId: artwork.contentId,
+    title: artwork.title,
   });
 
   // Validate artwork data
   if (!isValidArtwork(artwork)) {
-    logger.warn("Artwork data validation failed", {
+    log.warn("Invalid artwork data", {
       artworkId: artwork.contentId,
       title: artwork.title,
     });
@@ -138,58 +181,67 @@ export async function upsertArtwork(
     };
   }
 
-  logger.info("Starting upsert process for artwork", { title: artwork.title });
-
   try {
-    // Ensure artist exists first
-    const artistResult = await upsertArtist(
-      artwork.artistContentId,
-      artwork.artistName,
-      artwork.artistUrl,
-    );
+    // Use transaction to ensure data consistency
+    return await db.transaction(async (tx) => {
+      // Step 1: Ensure artist exists
+      const artistResult = await upsertArtist(
+        artwork.artistContentId,
+        artwork.artistName,
+        artwork.artistUrl
+      );
 
-    if (!artistResult.success) {
-      logger.error("Failed to upsert artist for the artwork", {
-        artistContentId: artwork.artistContentId,
-        artistName: artwork.artistName,
-      });
-      return {
-        success: false,
-        error: artistResult.error,
+      if (!artistResult.success) {
+        log.warn("Artist upsert failed", { error: artistResult.error });
+        return {
+          success: false,
+          error: artistResult.error || "Failed to ensure artist exists",
+        };
+      }
+
+      // Step 2: Clean/normalize artwork data
+      const normalizedArtwork = {
+        ...artwork,
+        // Ensure URL consistency by removing Large.jpg suffix if present
+        image: artwork.image.replace('!Large.jpg', ''),
+        // Ensure dates are set
+        updatedAt: new Date()
       };
-    }
 
-    logger.info("Artist successfully ensured. Proceeding with artwork upsert.");
+      // Step 3: Upsert artwork
+      await tx.insert(artworks)
+        .values({
+          ...normalizedArtwork,
+          createdAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [artworks.contentId],
+          set: normalizedArtwork,
+        });
 
-    await db
-      .insert(artworks)
-      .values({ ...artwork, createdAt: new Date() })
-      .onConflictDoUpdate({
-        target: [artworks.contentId],
-        set: artwork,
-      });
-
-    logger.info("Artwork upserted successfully", {
-      artworkId: artwork.contentId,
-      title: artwork.title,
-    });
-
-    return {
-      success: true,
-      data: {
+      log.info("Artwork upserted successfully", {
         artworkId: artwork.contentId,
         title: artwork.title,
-      },
-    };
-  } catch (error) {
-    logger.error("An error occurred during the artwork upsert process", {
-      error,
-      artworkId: artwork.contentId,
-      title: artwork.title,
+      });
+
+      return {
+        success: true,
+        data: {
+          artworkId: artwork.contentId,
+          title: artwork.title,
+        },
+      };
     });
+  } catch (error) {
+    log.error("Artwork upsert failed", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return {
       success: false,
       error: "Failed to ensure artwork exists",
+      details: error instanceof Error ? error.message : undefined,
     };
   }
 }
