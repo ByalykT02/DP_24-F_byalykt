@@ -6,7 +6,9 @@ import { artworks } from "../db/schema";
 import { asc, desc, sql } from "drizzle-orm";
 import { fetchWikiArtApi } from "./fetch-api";
 
-// Fallback data
+/**
+ * Fallback artwork data in case of API or database failures
+ */
 const FALLBACK_ARTWORKS: Artwork[] = [
   {
     title: "Holy Mount Athos",
@@ -22,15 +24,20 @@ const FALLBACK_ARTWORKS: Artwork[] = [
   },
 ];
 
-// Utility function to shuffle array
-function shuffleArray<T>(array: T[]): T[] {
-  return array
-    .map((value) => ({ value, sort: Math.random() }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({ value }) => value);
+/**
+ * Pagination result interface for artwork collections
+ */
+interface PaginatedArtworkResult {
+  artworks: Artwork[];
+  totalPages: number;
+  currentPage: number;
 }
 
-// Process artwork image URLs
+/**
+ * Processes artwork images to ensure correct URL format
+ * @param artwork - The artwork object to process
+ * @returns The processed artwork with corrected image URL
+ */
 function processArtwork(artwork: Artwork): Artwork {
   return {
     ...artwork,
@@ -38,17 +45,18 @@ function processArtwork(artwork: Artwork): Artwork {
   };
 }
 
-// Deprecated: random artowks from the DataArt API
+/**
+ * Fetches random artworks from the WikiArt API
+ * @deprecated Use fetchArtworksFromDB instead
+ * @param page - Page number (1-based)
+ * @param pageSize - Number of items per page
+ * @returns Paginated artworks with total pages and current page
+ */
 export async function fetchRandomArtworks(
   page: number = 1,
   pageSize: number = 15,
-): Promise<{
-  artworks: Artwork[];
-  totalPages: number;
-  currentPage: number;
-}> {
+): Promise<PaginatedArtworkResult> {
   try {
-    // Generate a random seed
     const randomSeed = Math.floor(Math.random() * 1000);
 
     const artworks = await fetchWikiArtApi<Artwork[]>(
@@ -60,27 +68,30 @@ export async function fetchRandomArtworks(
     const paginatedArtworks = artworks
       .slice(startIndex, startIndex + pageSize)
       .map(processArtwork);
+      
     return {
       artworks: paginatedArtworks,
       totalPages,
       currentPage: page,
     };
-    // return dbArtworks;
   } catch (error) {
-    console.error("Error fetching random artworks:", error);
+    console.error("Error fetching random artworks from API:", error);
     return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
   }
 }
 
+/**
+ * Fetches artworks from the database with pagination
+ * @param page - Page number (1-based)
+ * @param pageSize - Number of items per page
+ * @returns Paginated artworks with total pages and current page
+ */
 export async function fetchArtworksFromDB(
   page: number = 1,
   pageSize: number = 15,
-): Promise<{
-  artworks: Artwork[];
-  totalPages: number;
-  currentPage: number;
-}> {
+): Promise<PaginatedArtworkResult> {
   try {
+    // Get total count for pagination
     const totalCountResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(artworks);
@@ -88,26 +99,26 @@ export async function fetchArtworksFromDB(
     const totalCount = Number(totalCountResult[0]?.count ?? 0);
     const totalPages = Math.ceil(totalCount / pageSize);
 
+    // Fetch paginated results
     const dbArtworks = await db
       .select()
       .from(artworks)
-      .orderBy(asc(artworks.updatedAt) )
+      .orderBy(asc(artworks.updatedAt))
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    const processedArtworks = dbArtworks
-      .map((artwork) => ({
-        title: artwork.title,
-        contentId: artwork.contentId,
-        artistContentId: artwork.artistContentId,
-        artistName: artwork.artistName,
-        completitionYear: artwork.completitionYear ?? undefined,
-        yearAsString: artwork.yearAsString ?? undefined,
-        width: Number(artwork.width) ?? undefined,
-        height: Number(artwork.height) ?? undefined,
-        image: artwork.image,
-      }))
-      .map(processArtwork);
+    // Transform database results to Artwork type
+    const processedArtworks = dbArtworks.map((artwork) => ({
+      title: artwork.title,
+      contentId: artwork.contentId,
+      artistContentId: artwork.artistContentId,
+      artistName: artwork.artistName,
+      completitionYear: artwork.completitionYear ?? undefined,
+      yearAsString: artwork.yearAsString ?? undefined,
+      width: Number(artwork.width) ?? undefined,
+      height: Number(artwork.height) ?? undefined,
+      image: artwork.image,
+    })).map(processArtwork);
 
     return {
       artworks: processedArtworks,
@@ -115,7 +126,99 @@ export async function fetchArtworksFromDB(
       currentPage: page,
     };
   } catch (error) {
-    console.error("Error fetching random artworks from database:", error);
+    console.error("Error fetching artworks from database:", error);
+    return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
+  }
+}
+
+/**
+ * Valid columns for sorting in the artworks table
+ */
+type SortableColumn = 'title' | 'artistName' | 'completitionYear' | 'createdAt' | 'updatedAt';
+
+/**
+ * Fetches artworks from the database with optional sorting parameters
+ * @param page - Page number (1-based)
+ * @param pageSize - Number of items per page
+ * @param sortBy - Field to sort by
+ * @param sortOrder - Sort order ('asc' or 'desc')
+ * @returns Paginated artworks with total pages and current page
+ */
+export async function fetchArtworksFromDBWithSorting(
+  page: number = 1,
+  pageSize: number = 15,
+  sortBy: SortableColumn = 'updatedAt',
+  sortOrder: 'asc' | 'desc' = 'desc',
+): Promise<PaginatedArtworkResult> {
+  try {
+    // Get total count for pagination
+    const totalCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(artworks);
+
+    const totalCount = Number(totalCountResult[0]?.count ?? 0);
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Build query base
+    let query = db
+      .select()
+      .from(artworks)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+      
+    // Apply sorting based on parameters
+    switch (sortBy) {
+      case 'title':
+        query = sortOrder === 'asc' 
+          ? query.orderBy(asc(artworks.title)) 
+          : query.orderBy(desc(artworks.title));
+        break;
+      case 'artistName':
+        query = sortOrder === 'asc' 
+          ? query.orderBy(asc(artworks.artistName)) 
+          : query.orderBy(desc(artworks.artistName));
+        break;
+      case 'completitionYear':
+        query = sortOrder === 'asc' 
+          ? query.orderBy(asc(artworks.completitionYear)) 
+          : query.orderBy(desc(artworks.completitionYear));
+        break;
+      case 'createdAt':
+        query = sortOrder === 'asc' 
+          ? query.orderBy(asc(artworks.createdAt)) 
+          : query.orderBy(desc(artworks.createdAt));
+        break;
+      case 'updatedAt':
+      default:
+        query = sortOrder === 'asc' 
+          ? query.orderBy(asc(artworks.updatedAt)) 
+          : query.orderBy(desc(artworks.updatedAt));
+        break;
+    }
+
+    // Execute query
+    const dbArtworks = await query;
+
+    // Transform database results to Artwork type
+    const processedArtworks = dbArtworks.map((artwork) => ({
+      title: artwork.title,
+      contentId: artwork.contentId,
+      artistContentId: artwork.artistContentId,
+      artistName: artwork.artistName,
+      completitionYear: artwork.completitionYear ?? undefined,
+      yearAsString: artwork.yearAsString ?? undefined,
+      width: Number(artwork.width) ?? undefined,
+      height: Number(artwork.height) ?? undefined,
+      image: artwork.image,
+    })).map(processArtwork);
+
+    return {
+      artworks: processedArtworks,
+      totalPages,
+      currentPage: page,
+    };
+  } catch (error) {
+    console.error("Error fetching artworks from database with sorting:", error);
     return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -8,7 +8,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Button } from "~/components/ui/button";
 import { addToHistory } from "~/server/actions/history";
-import { Share2, ArrowLeft, MapPin, Calendar, Tag, Brush } from "lucide-react";
+import { Share2, ArrowLeft, MapPin, Calendar, Tag, Brush, ZoomIn, ZoomOut, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { fetchArtwork } from "~/server/actions/fetch-artwork";
@@ -18,13 +18,11 @@ import { checkIsFavorite } from "~/server/actions/favorites";
 import { FavoriteButton } from "~/components/common/favorite-button";
 import { AddToCollectionButton } from "~/components/collections/add-to-collection-button";
 import { ArtworkRecommendations } from "~/components/recommendations/artwork-recommendations";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  TransformWrapper,
-  TransformComponent,
-  useControls,
-} from "react-zoom-pan-pinch";
+import { motion, AnimatePresence } from "framer-motion";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import ShareDialog from "~/components/common/share-dialog";
+import { Suspense } from "react";
+import { cn } from "~/lib/utils";
 
 // Types
 interface DetailCardProps {
@@ -39,20 +37,138 @@ interface ArtworkPageProps {
   };
 }
 
-const useImageOrientation = (artwork?: ArtworkDetailed) => {
-  const [isHorizontal, setIsHorizontal] = useState(false);
+/**
+ * Custom hook to fetch and manage artwork data
+ */
+const useArtworkData = (id: string, userId?: string) => {
+  const [artwork, setArtwork] = useState<ArtworkDetailed | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const historyAddedRef = useRef(false);
 
+  // Fetch artwork data
   useEffect(() => {
-    if (artwork?.width && artwork?.height) {
-      const aspectRatio = Number(artwork.width) / Number(artwork.height);
-      setIsHorizontal(aspectRatio > 1);
-    }
-  }, [artwork?.width, artwork?.height]);
+    const loadArtwork = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const response = await fetchArtwork(parseInt(id, 10));
+        
+        if (!response.success || !response.data) {
+          setError(response.error || "Failed to load artwork");
+          return;
+        }
+        
+        setArtwork(response.data);
 
-  return isHorizontal;
+        // Add to history if logged in
+        if (userId && !historyAddedRef.current) {
+          await addToHistory(userId, response.data);
+          historyAddedRef.current = true;
+        }
+      } catch (err) {
+        console.error("Error loading artwork:", err);
+        setError("Failed to load artwork. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadArtwork();
+    
+    return () => {
+      historyAddedRef.current = false;
+    };
+  }, [id, userId]);
+
+  // Check if artwork is favorited
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!userId || !id) return;
+      
+      try {
+        const response = await checkIsFavorite(userId, Number(id));
+        if (response.success && response.data) {
+          setIsFavorite(response.data.isFavorite);
+        }
+      } catch (error) {
+        console.error("Failed to check favorite status:", error);
+      }
+    };
+
+    void checkFavoriteStatus();
+  }, [userId, id]);
+
+  return { 
+    artwork, 
+    isLoading, 
+    error,
+    isFavorite,
+    setIsFavorite
+  };
 };
 
-// Components
+/**
+ * Hook to determine artwork orientation and calculate optimal dimensions
+ */
+const useArtworkLayout = (artwork: ArtworkDetailed | null) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  // Determine if artwork is horizontal or vertical
+  const isHorizontal = useMemo(() => {
+    if (!artwork?.width || !artwork?.height) return true;
+    const artWidth = parseFloat(String(artwork.width));
+    const artHeight = parseFloat(String(artwork.height));
+    return artWidth > artHeight;
+  }, [artwork?.width, artwork?.height]);
+
+  // Calculate optimal dimensions based on viewport and container
+  const calculateDimensions = useCallback(() => {
+    if (!containerRef.current || !artwork?.width || !artwork?.height) return;
+
+    const containerWidth = containerRef.current.offsetWidth;
+    const maxHeight = Math.min(window.innerHeight * 0.7, 800);
+    
+    const artWidth = parseFloat(String(artwork.width));
+    const artHeight = parseFloat(String(artwork.height));
+    const aspectRatio = artWidth / artHeight;
+
+    let width = containerWidth;
+    let height = containerWidth / aspectRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = maxHeight * aspectRatio;
+    }
+
+    setDimensions({ width, height: height + 56 });
+  }, [artwork?.width, artwork?.height]);
+
+  // Recalculate on resize or artwork change
+  useEffect(() => {
+    calculateDimensions();
+    
+    const handleResize = () => {
+      calculateDimensions();
+    };
+    
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [calculateDimensions]);
+
+  return { 
+    containerRef, 
+    dimensions, 
+    isHorizontal 
+  };
+};
+
+/**
+ * Detail card component for artwork metadata
+ */
 const DetailCard = ({ title, content, icon }: DetailCardProps) => {
   if (!content) return null;
 
@@ -67,17 +183,21 @@ const DetailCard = ({ title, content, icon }: DetailCardProps) => {
   );
 };
 
-const ImageControls = () => {
-  const { zoomIn, zoomOut, resetTransform } = useControls();
+/**
+ * Image controls component (zoom in, out, reset)
+ */
+const ImageControls = ({ zoomIn, zoomOut, resetTransform }: any) => {
   return (
     <div className="flex gap-x-2">
       <Button
         variant="secondary"
         size="sm"
-        className="gap-2 hover:bg-red-500"
+        className="gap-2"
         onClick={() => zoomIn()}
+        aria-label="Zoom in"
       >
-        Zoom In
+        <ZoomIn className="h-4 w-4" />
+        <span className="hidden sm:inline">Zoom In</span>
       </Button>
 
       <Button
@@ -85,123 +205,110 @@ const ImageControls = () => {
         size="sm"
         className="gap-2"
         onClick={() => zoomOut()}
+        aria-label="Zoom out"
       >
-        Zoom Out
+        <ZoomOut className="h-4 w-4" />
+        <span className="hidden sm:inline">Zoom Out</span>
       </Button>
+      
       <Button
         variant="secondary"
         size="sm"
         className="gap-2"
         onClick={() => resetTransform()}
+        aria-label="Reset zoom"
       >
-        Reset
+        <RefreshCw className="h-4 w-4" />
+        <span className="hidden sm:inline">Reset</span>
       </Button>
     </div>
   );
 };
 
-const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => (
-  <Card className="mx-auto max-w-6xl overflow-hidden bg-black/5 backdrop-blur-sm">
-    <TransformWrapper>
-      <AnimatePresence>
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="relative flex h-full justify-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {artwork.image && (
-            <TransformComponent>
-              <Image
-                src={artwork.image}
-                alt={artwork.title || "Artwork"}
-                width={Number(artwork.width) ?? 1200}
-                height={Number(artwork.height) ?? 800}
-                className="object-contain"
-                    loading="lazy"
-                      quality={80}
-                sizes="90vw"
-              />
-            </TransformComponent>
-          )}
-        </motion.div>
-      </AnimatePresence>
+/**
+ * Image viewer component with zoom functionality
+ */
+const ImageViewer = ({ artwork }: { artwork: ArtworkDetailed }) => {
+  if (!artwork.image) return null;
+  
+  const width = Number(artwork.width) || 1200;
+  const height = Number(artwork.height) || 800;
+  
+  return (
+    <Card className="mx-auto max-w-6xl overflow-hidden bg-black/5 backdrop-blur-sm">
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.5}
+        maxScale={4}
+        limitToBounds={true}
+        wheel={{ step: 0.05 }}
+        doubleClick={{ disabled: false }}
+      >
+        {({ zoomIn, zoomOut, resetTransform }) => (
+          <>
+            <div className="relative flex h-full justify-center">
+              <TransformComponent wrapperClass="w-full" contentClass="w-full">
+                <Image
+                  src={artwork.image}
+                  alt={artwork.title || "Artwork"}
+                  width={width}
+                  height={height}
+                  className="object-contain"
+                  loading="eager"
+                  priority
+                  quality={90}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                />
+              </TransformComponent>
+            </div>
 
-      <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
-        <div className="flex">
-          <div className="w-1/2">
-            <Badge variant="secondary" className="h-full">
-              {artwork.width} x {artwork.height}
-            </Badge>
-          </div>
+            <div className="border-t bg-white/80 p-4 backdrop-blur-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="secondary" className="h-full">
+                  {artwork.width} × {artwork.height}
+                </Badge>
 
-          <div className="w-1/2 flex justify-end">
-            <ImageControls />
-          </div>
-        </div>
-      </div>
-    </TransformWrapper>
-  </Card>
-);
-
-// Custom hooks
-const useArtworkData = (id: string, userId?: string) => {
-  const [artwork, setArtwork] = useState<ArtworkDetailed>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const historyAddedRef = useRef(false);
-
-  useEffect(() => {
-    const loadArtwork = async () => {
-      try {
-        setIsLoading(true);
-        const artworkData = await fetchArtwork(id);
-        setArtwork(artworkData);
-
-        if (userId && !historyAddedRef.current) {
-          await addToHistory(userId, artworkData);
-          historyAddedRef.current = true;
-        }
-      } catch (err) {
-        console.error("Error loading artwork:", err);
-        setError("Failed to load artwork. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void loadArtwork();
-    return () => {
-      historyAddedRef.current = false;
-    };
-  }, [id, userId]);
-
-  return { artwork, isLoading, error };
+                <ImageControls 
+                  zoomIn={zoomIn}
+                  zoomOut={zoomOut}
+                  resetTransform={resetTransform}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </TransformWrapper>
+    </Card>
+  );
 };
 
+/**
+ * Title section component
+ */
 const TitleSection = ({
   artwork,
   isFavorite,
   setIsFavorite,
   isHorizontal,
+  showButtons = true
 }: {
   artwork: ArtworkDetailed;
   isFavorite: boolean;
   setIsFavorite: (state: boolean) => void;
   isHorizontal: boolean;
+  showButtons?: boolean;
 }) => (
-  <div className="flex items-start justify-between">
+  <div className="flex flex-wrap items-start justify-between gap-4">
     <div className="space-y-2">
-      <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+      <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
         {artwork.title}
       </h1>
       <h2 className="cursor-pointer text-xl text-gray-600 transition-colors hover:text-gray-900">
         {artwork.artistName}
       </h2>
     </div>
-    {isHorizontal && (
+    
+    {showButtons && isHorizontal && (
       <div className="flex gap-2">
         <FavoriteButton
           artworkId={artwork.contentId}
@@ -214,6 +321,9 @@ const TitleSection = ({
   </div>
 );
 
+/**
+ * Artwork details content section
+ */
 const DetailsContent = ({
   artwork,
   isFavorite,
@@ -228,7 +338,7 @@ const DetailsContent = ({
   showTitle?: boolean;
 }) => {
   return (
-    <div className={`space-y-8 ${isHorizontal ? "py-8" : "p-8"} h-full`}>
+    <div className={cn("space-y-6", isHorizontal ? "py-6" : "p-6")}>
       {showTitle && (
         <TitleSection
           artwork={artwork}
@@ -281,7 +391,12 @@ const DetailsContent = ({
       <Separator />
 
       <div
-        className={`grid gap-6 ${isHorizontal ? "grid-cols-4" : "sm:grid-cols-2"}`}
+        className={cn(
+          "grid gap-6", 
+          isHorizontal 
+            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" 
+            : "grid-cols-1 sm:grid-cols-2"
+        )}
       >
         <DetailCard
           title="Genre"
@@ -325,73 +440,78 @@ const DetailsContent = ({
   );
 };
 
-const useImageDimensions = (artwork?: ArtworkDetailed) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+/**
+ * Loading skeleton component
+ */
+const ArtworkSkeleton = () => (
+  <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="mb-6 flex items-center justify-between">
+      <Skeleton className="h-10 w-20" />
+      <Skeleton className="h-10 w-20" />
+    </div>
+    <div className="grid gap-8 lg:grid-cols-2">
+      <Skeleton className="aspect-square w-full lg:aspect-[3/4]" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-6 w-1/2" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-4 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
-  const calculateDimensions = useCallback(() => {
-    if (!containerRef.current || !artwork?.width || !artwork?.height) return;
+/**
+ * Error state component
+ */
+const ErrorState = ({ error, onBack }: { error: string | null; onBack: () => void }) => (
+  <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+    <Card className="max-w-md p-6 text-center">
+      <h2 className="mb-2 text-xl font-semibold text-red-600">
+        {error || "Artwork Not Found"}
+      </h2>
+      <p className="text-gray-600">
+        {error
+          ? "Please try again later."
+          : "The artwork you're looking for doesn't exist or has been removed."}
+      </p>
+      <Button
+        onClick={onBack}
+        className="mt-4"
+        aria-label="Go back to previous page"
+      >
+        Go Back
+      </Button>
+    </Card>
+  </div>
+);
 
-    const containerWidth = containerRef.current.offsetWidth;
-    const maxHeight = Math.min(window.innerHeight * 0.7, 800);
-    const aspectRatio = Number(artwork.width) / Number(artwork.height);
-
-    let width = containerWidth;
-    let height = containerWidth / aspectRatio;
-
-    if (height > maxHeight) {
-      height = maxHeight;
-      width = maxHeight * aspectRatio;
-    }
-
-      setDimensions({ width, height: height + 56 });
-  }, [artwork?.width, artwork?.height]);
-
-  useEffect(() => {
-    calculateDimensions();
-    window.addEventListener("resize", calculateDimensions);
-    return () => window.removeEventListener("resize", calculateDimensions);
-  }, [calculateDimensions]);
-
-  return { containerRef, dimensions };
-};
-
-// Main component
+/**
+ * Main component
+ */
 export default function ArtworkPage({ params }: ArtworkPageProps) {
-  const [isImageZoomed, setIsImageZoomed] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const router = useRouter();
   const { data: session } = useSession();
-
-  const { artwork, isLoading, error } = useArtworkData(
-    params.id,
-    session?.user?.id,
-  );
-  const { containerRef, dimensions } = useImageDimensions(artwork);
-
-  const isHorizontal = useImageOrientation(artwork);
-
-  useEffect(() => {
-    const checkFavoriteStatus = async () => {
-      if (session?.user?.id) {
-        const status = await checkIsFavorite(
-          session.user.id,
-          Number(params.id),
-        );
-        setIsFavorite(status.data?.isFavorite!);
-      }
-    };
-
-    void checkFavoriteStatus();
-  }, [session?.user?.id, params.id]);
+  const router = useRouter();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  
+  // Fetch artwork data
+  const { 
+    artwork, 
+    isLoading, 
+    error, 
+    isFavorite, 
+    setIsFavorite 
+  } = useArtworkData(params.id, session?.user?.id);
+  
+  // Calculate layout based on artwork dimensions
+  const { containerRef, dimensions, isHorizontal } = useArtworkLayout(artwork);
 
   // Handle keyboard events for accessibility
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isImageZoomed) {
-        setIsImageZoomed(false);
-      }
       if (e.key === "Escape" && isShareDialogOpen) {
         setIsShareDialogOpen(false);
       }
@@ -399,58 +519,22 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isImageZoomed]);
+  }, [isShareDialogOpen]);
 
-  const handleShare = () => {
-    setIsShareDialogOpen(true);
-  };
-
+  // Loading state
   if (isLoading) {
-    return (
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="grid gap-8 lg:grid-cols-2">
-          <Skeleton className="aspect-square w-full lg:aspect-[3/4]" />
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-6 w-1/2" />
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-4 w-full" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ArtworkSkeleton />;
   }
 
+  // Error state
   if (error || !artwork) {
-    return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-        <Card className="max-w-md p-6 text-center">
-          <h2 className="mb-2 text-xl font-semibold text-red-600">
-            {error || "Artwork Not Found"}
-          </h2>
-          <p className="text-gray-600">
-            {error
-              ? "Please try again later."
-              : "The artwork you're looking for doesn't exist or has been removed."}
-          </p>
-          <Button
-            onClick={() => router.back()}
-            className="mt-4"
-            aria-label="Go back to previous page"
-          >
-            Go Back
-          </Button>
-        </Card>
-      </div>
-    );
+    return <ErrorState error={error} onBack={() => router.back()} />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-16">
       <div className="container mx-auto max-w-7xl px-4 py-8">
+        {/* Navigation and sharing */}
         <div className="mb-6 flex items-center justify-between">
           <Button
             onClick={() => router.back()}
@@ -459,19 +543,20 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             aria-label="Go back to previous page"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            <span className="hidden sm:inline">Back</span>
           </Button>
           <Button
             variant="outline"
             className="gap-2"
-            onClick={handleShare}
+            onClick={() => setIsShareDialogOpen(true)}
             aria-label="Share artwork"
           >
             <Share2 className="h-4 w-4" />
-            Share
+            <span className="hidden sm:inline">Share</span>
           </Button>
         </div>
 
+        {/* Share dialog */}
         <ShareDialog
           isOpen={isShareDialogOpen}
           onOpenChange={setIsShareDialogOpen}
@@ -480,8 +565,9 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           id={artwork.contentId}
         />
 
+        {/* Horizontal layout */}
         {isHorizontal ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <TitleSection
               artwork={artwork}
               isFavorite={isFavorite}
@@ -493,14 +579,13 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
               ref={containerRef}
               className="relative flex w-full justify-center bg-gray-50"
             >
-              <div className="max-w-6xl">
-                <ImageViewer artwork={artwork} />
-              </div>
+              <ImageViewer artwork={artwork} />
             </div>
 
             <ScrollArea 
-                style={{height: dimensions.height }}
-                className="rounded-lg border bg-background shadow-sm">
+              className="rounded-lg border bg-background shadow-sm"
+              style={{ height: Math.max(300, dimensions.height) }}
+            >
               <DetailsContent
                 artwork={artwork}
                 isFavorite={isFavorite}
@@ -511,13 +596,13 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             </ScrollArea>
           </div>
         ) : (
-          // Vertical Layout (unchanged)
-          <div className="grid gap-12 lg:grid-cols-2">
+          // Vertical Layout
+          <div className="grid gap-8 lg:grid-cols-2">
             <div ref={containerRef} className="relative">
               <ImageViewer artwork={artwork} />
             </div>
 
-            <ScrollArea className="h-[calc(100vh-8rem)]">
+            <ScrollArea className="h-[calc(100vh-12rem)]">
               <DetailsContent
                 artwork={artwork}
                 isFavorite={isFavorite}
@@ -529,9 +614,12 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
         )}
       </div>
 
+      {/* Recommendations */}
       <div className="container mx-auto mt-16 px-4">
         <h2 className="mb-8 text-2xl font-bold">You Might Also Like</h2>
-        <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
+        <Suspense fallback={<div className="h-64 w-full bg-gray-100 animate-pulse rounded-lg" />}>
+          <ArtworkRecommendations limit={6} artistId={artwork.artistContentId} />
+        </Suspense>
       </div>
     </div>
   );
