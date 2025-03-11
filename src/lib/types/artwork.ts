@@ -53,13 +53,33 @@ export interface WikiArtSearchResult {
 }
 
 
-export interface ArtworkMetrics { 
+export interface ArtworkRecommendation {
   contentId: number;
-  timeDistance: number;
-  tagSimilarity: number;
-  dictionarySimilarity: number;
-  styleSimilarity: number;
-  techniqueSimilarity: number;
-  periodSimilarity: number;
-  themeSimilarity: number;
+  title: string | null;
+  image: string;
+  yearAsString: string | null;
+  completitionYear: number | null;
+  tags: string | null;
+  dictionaries: number[] | null;
+  style: string | null;
+  genre: string | null;
+  period: string | null;
+  technique: string | null;
+  artist: Artist;
+}
+
+interface Artist {
+  contentId: number;
+  artistName: string;
+}
+
+export interface ReferenceArtwork {
+  contentId: number;
+  completitionYear: number | null;
+  tags: string | null;
+  dictionaries: number[] | null;
+  style: string | null;
+  genre: string | null;
+  period: string | null;
+  technique: string | null;
 }

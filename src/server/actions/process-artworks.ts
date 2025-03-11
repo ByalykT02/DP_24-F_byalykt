@@ -11,7 +11,7 @@ export async function processArtworksToDb(artworks: Artwork[]) {
         try {
           const artworkData = await fetchArtwork(String(artwork.contentId));
 
-          const processedArtwork = await upsertArtwork(artworkData);
+          const processedArtwork = await upsertArtwork(artworkData.data!);
 
           return processedArtwork;
         } catch (individualError) {

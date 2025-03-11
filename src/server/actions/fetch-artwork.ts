@@ -50,6 +50,9 @@ function processArtworkData(
     return FALLBACK_ARTWORK;
   }
 
+  const width = artwork.width ? parseFloat(artwork.width) : null;
+  const height = artwork.height ? parseFloat(artwork.height) : null;
+
   // Start with a new object to avoid mutations
   const processed: ArtworkDetailed = {
     // Set defaults for required fields
@@ -63,14 +66,18 @@ function processArtworkData(
 
     // Copy all other fields with null fallbacks
     url: artwork.url ?? null,
-    completitionYear: artwork.completitionYear ?? null,
+    completitionYear: artwork.completitionYear
+      ? Number(artwork.completitionYear)
+      : null,
     yearAsString: artwork.yearAsString ?? null,
     genre: artwork.genre ?? null,
     style: artwork.style ?? null,
     tags: artwork.tags ?? null,
-    dictionaries: artwork.dictionaries ?? null,
-    width: artwork.width ?? null,
-    height: artwork.height ?? null,
+    dictionaries: Array.isArray(artwork.dictionaries)
+      ? artwork.dictionaries
+      : null,
+    width: width,
+    height: height,
     material: artwork.material ?? null,
     technique: artwork.technique ?? null,
     location: artwork.location ?? null,
@@ -78,8 +85,8 @@ function processArtworkData(
     serie: artwork.serie ?? null,
     galleryName: artwork.galleryName ?? null,
     auction: artwork.auction ?? null,
-    yearOfTrade: artwork.yearOfTrade ?? null,
-    lastPrice: artwork.lastPrice ?? null,
+    yearOfTrade: artwork.yearOfTrade ? Number(artwork.yearOfTrade) : null,
+    lastPrice: artwork.lastPrice ? parseFloat(artwork.lastPrice) : null,
     description: artwork.description ?? null,
     createdAt: artwork.createdAt ?? new Date(),
     updatedAt: artwork.updatedAt ?? new Date(),
