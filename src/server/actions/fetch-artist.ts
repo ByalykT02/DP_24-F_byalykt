@@ -47,83 +47,175 @@ const FALLBACK_ARTWORKS: Artwork[] = [
   },
 ];
 
-function convertJsonDate(jsonDate: string): Date {
-  const match = jsonDate.match(/\/Date\((-?\d+)\)\//);
-  if (!match) {
-    throw new Error(`Invalid JSON date format: ${jsonDate}`);
+/**
+ * Safely converts WikiArt JSON date format to a Date object
+ * Returns null if conversion fails
+ */
+function convertJsonDate(jsonDate: string): string | null {
+  try {
+    const match = jsonDate.match(/\/Date\((-?\d+)\)\//);
+    if (!match || !match[1]) {
+      return null;
+    }
+    
+    const timestamp = parseInt(match[1], 10);
+    if (isNaN(timestamp)) {
+      return null;
+    }
+    
+    return new Date(timestamp).toISOString();
+  } catch (error) {
+    logger.warn("Failed to convert date", { jsonDate, error });
+    return null;
   }
-  return new Date(parseInt(match[1]!, 10));
 }
 
-function processArtist(artist: ArtistDetailed): ArtistDetailed {
+/**
+ * Process and normalize artist data
+ * Uses fallback only if artist data is completely missing
+ */
+function processArtist(artist: ArtistDetailed | null): ArtistDetailed {
   const log = logger.child({
     action: "processArtist",
-    artistId: artist?.contentId,
+    artistId: artist?.contentId ?? "unknown",
   });
 
   if (!artist) {
-    log.error("Artist data missing");
-    throw new Error("Artist data not found");
+    log.warn("Artist data missing, using fallback");
+    return {
+      ...FALLBACK_ARTIST,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
   log.info("Processing artist data");
-  return {
-    ...artist,
-    image: artist.image || FALLBACK_ARTIST.image,
-    birthDay: convertJsonDate(artist?.birthDay!).toISOString(),
-    deathDay: convertJsonDate(artist?.deathDay!).toISOString(),
-  };
+  
+  // Process only the actual artist data - don't mix with fallback
+  const processedArtist = { ...artist };
+  
+  // Process dates if they exist
+  if (processedArtist.birthDay) {
+    const birthDay = convertJsonDate(processedArtist.birthDay);
+    if (birthDay) processedArtist.birthDay = birthDay;
+  }
+  
+  if (processedArtist.deathDay) {
+    const deathDay = convertJsonDate(processedArtist.deathDay);
+    if (deathDay) processedArtist.deathDay = deathDay;
+  }
+  
+  // Ensure image exists - use artist's own image or null, not fallback
+  processedArtist.image = processedArtist.image || null;
+  
+  // Set timestamps for database compatibility
+  processedArtist.createdAt = new Date();
+  processedArtist.updatedAt = new Date();
+  
+  return processedArtist;
 }
 
-function processArtworks(artworks: Artwork[]): Artwork[] {
+/**
+ * Process and normalize artwork data
+ */
+function processArtworks(artworks: Artwork[] | null): Artwork[] {
   const log = logger.child({
     action: "processArtworks",
-    artworkCount: artworks.length,
+    artworkCount: artworks?.length ?? 0,
   });
 
+  if (!Array.isArray(artworks) || artworks.length === 0) {
+    log.warn("No artworks found, using fallback");
+    return [...FALLBACK_ARTWORKS]; // Return a copy of fallback
+  }
+
   log.info("Processing artworks");
-  return artworks.map((artwork) => ({
-    ...artwork,
-    image: artwork.image.replace("!Large.jpg", ""),
-  }));
+  
+  return artworks
+    .filter(artwork => artwork && artwork.contentId && artwork.image)
+    .map(artwork => ({
+      ...artwork,
+      image: artwork.image.replace("!Large.jpg", ""),
+    }));
 }
 
+/**
+ * Fetch artist details and artworks in parallel
+ */
 export async function fetchArtistDetails(url: string) {
+  if (!url) {
+    logger.warn("Invalid artist URL provided");
+    return {
+      artist: { ...FALLBACK_ARTIST },
+      artworks: [...FALLBACK_ARTWORKS],
+    };
+  }
+
+  // Normalize URL for consistency
+  const normalizedUrl = url.toLowerCase().trim();
+  
   const log = logger.child({
     action: "fetchArtistDetails",
-    artistUrl: url,
+    artistUrl: normalizedUrl,
   });
 
   try {
     log.info("Fetching artist details");
 
-    const artist = await fetchWikiArtApi<ArtistDetailed>(`/${url}?json=2`);
-    if (!artist) {
-      log.error("Artist data not found");
-      throw new Error("Artist data not found");
+    // Fetch artist and artworks in parallel for better performance
+    const [artistResponse, artworksResponse] = await Promise.all([
+      fetchWikiArtApi<ArtistDetailed>(`/${normalizedUrl}?json=2`)
+        .catch(error => {
+          log.error("Failed to fetch artist data", { 
+            error: error instanceof Error ? error.message : String(error)
+          });
+          return null;
+        }),
+        
+      fetchWikiArtApi<Artwork[]>(
+        `/App/Painting/PaintingsByArtist?artistUrl=${normalizedUrl}&json=2`
+      ).catch(error => {
+        log.error("Failed to fetch artist's artworks", { 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+        return null;
+      })
+    ]);
+
+    // Handle the case when artist isn't found
+    if (!artistResponse) {
+      log.warn("Artist not found, using fallback data");
+      return {
+        artist: processArtist(FALLBACK_ARTIST),
+        artworks: processArtworks(FALLBACK_ARTWORKS),
+      };
     }
-    log.info("Artist details fetched", { artistId: artist.contentId });
 
-    const artworks = await fetchWikiArtApi<Artwork[]>(
-      `/App/Painting/PaintingsByArtist?artistUrl=${url}&json=2`,
-    );
-    log.info("Artworks fetched", { count: artworks.length });
-
-    const processedData = {
-      artist: processArtist(artist || FALLBACK_ARTIST),
-      artworks: processArtworks(
-        artworks?.length ? artworks : FALLBACK_ARTWORKS,
-      ),
-    };
-
-    log.info("Artist details processed successfully", {
-      artistId: artist.contentId,
-      artworksCount: artworks.length,
+    // Process real artist data
+    const processedArtist = processArtist(artistResponse);
+    log.info("Artist details fetched and processed", { 
+      artistId: processedArtist.contentId,
+      name: processedArtist.artistName 
     });
 
-    return processedData;
+    // Process artworks or use fallbacks if none found
+    const processedArtworks = artworksResponse?.length 
+      ? processArtworks(artworksResponse)
+      : processArtworks(FALLBACK_ARTWORKS);
+    
+    log.info("Artworks processed", { count: processedArtworks.length });
+
+    return {
+      artist: processedArtist,
+      artworks: processedArtworks,
+    };
   } catch (error) {
-    log.error("Failed to fetch artist details", { error });
+    log.error("Failed to fetch artist details", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
+    // Return fallback data on error
     return {
       artist: processArtist(FALLBACK_ARTIST),
       artworks: processArtworks(FALLBACK_ARTWORKS),

@@ -3,7 +3,7 @@
 import { db } from "~/server/db";
 import { eq, and, or, sql, ne, between } from "drizzle-orm";
 import { artworks, artists } from "~/server/db/schema";
-import { ArtworkMetrics, ArtworkDetailed } from "~/lib/types/artwork";
+import { ArtworkRecommendation, ArtworkDetailed } from "~/lib/types/artwork";
 
 interface RecommendationParams {
   artistId: number;
