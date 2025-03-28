@@ -45,25 +45,6 @@ export default function FavoritesPage() {
     void loadFavorites();
   }, [loadFavorites]);
 
-  const dropFavorites = useCallback(async () => {
-    if (!session?.user?.id) return;
-
-    try {
-      const response = await clearFavorites(session.user.id);
-
-      if (!response.success) {
-        setError(response.error ?? "Failed to clear favorites");
-      } else {
-        setFavorites([]);
-        setError(null);
-      }
-    } catch (err) {
-      setError("Failed to clear favorites");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session?.user?.id]);
-
   const handleClearFavorites = async () => {
     if (!session?.user?.id) return;
 
