@@ -241,7 +241,6 @@ export async function upsertArtwork(
     return {
       success: false,
       error: "Failed to ensure artwork exists",
-      details: error instanceof Error ? error.message : undefined,
     };
   }
 }
