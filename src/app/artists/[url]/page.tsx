@@ -132,7 +132,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
             </div>
           </div>
         </header>
-  
+
         {/* Main Content */}
         <main className="container mx-auto max-w-7xl px-4 py-8">
           {/* Artist Info Section */}
@@ -151,7 +151,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                     />
                   </div>
                 </Card>
-                
+
                 {/* Quick Info */}
                 <Card className="p-6">
                   <div className="space-y-4">
@@ -162,7 +162,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                         {artist.birthDayAsString} - {artist.deathDayAsString}
                       </p>
                     </div>
-                    
+
                     {artist.gender && (
                       <div>
                         <h2 className="text-sm font-medium text-muted-foreground">Gender</h2>
@@ -172,7 +172,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                         </p>
                       </div>
                     )}
-  
+
                     {artist.wikipediaUrl && (
                       <div>
                         <h2 className="text-sm font-medium text-muted-foreground">Links</h2>
@@ -190,7 +190,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                   </div>
                 </Card>
               </div>
-  
+
               {/* Artist Details */}
               <div className="space-y-8">
                 <div>
@@ -203,7 +203,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                     </p>
                   )}
                 </div>
-  
+
                 {/* Biography */}
                 {artist.biography && (
                   <Card className="p-6">
@@ -216,7 +216,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                     </div>
                   </Card>
                 )}
-  
+
                 {/* Career Details */}
                 <div className="grid gap-6 sm:grid-cols-2">
                   {/* Periods of Work */}
@@ -235,7 +235,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
                       </div>
                     </Card>
                   )}
-  
+
                   {/* Series */}
                   {artist.series && (
                     <Card className="p-6">
@@ -256,7 +256,7 @@ export default function ArtistPage({ params }: ArtistPageProps) {
               </div>
             </div>
           </div>
-  
+
           {/* Artworks Section */}
           {artworks.length > 0 && (
             <section>
