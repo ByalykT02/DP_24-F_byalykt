@@ -33,6 +33,12 @@ export default function Header() {
             Artists
           </Link>
           <Link
+            href="/categories"
+            className="text-sm font-medium hover:text-primary"
+          >
+            Categories
+          </Link>
+          <Link
             href="/about"
             className="text-sm font-medium hover:text-primary"
           >

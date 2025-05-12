@@ -86,7 +86,7 @@ function processArtworkData(
     galleryName: artwork.galleryName ?? null,
     auction: artwork.auction ?? null,
     yearOfTrade: artwork.yearOfTrade ? Number(artwork.yearOfTrade) : null,
-    lastPrice: artwork.lastPrice ? parseFloat(artwork.lastPrice) : null,
+    lastPrice: artwork.lastPrice ? artwork.lastPrice : null,
     description: artwork.description ?? null,
     createdAt: artwork.createdAt ?? new Date(),
     updatedAt: artwork.updatedAt ?? new Date(),
