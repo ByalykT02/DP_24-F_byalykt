@@ -7,6 +7,7 @@ import { fetchWikiArtApi } from "./fetch-api";
 import { db } from "~/server/db";
 import { artworks } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import { processArtworksToDb } from "./process-artworks";
 
 // Fallback artwork data
 const FALLBACK_ARTWORK: ArtworkDetailed = {
@@ -49,6 +50,7 @@ function processArtworkData(
   if (!artwork || typeof artwork !== "object") {
     return FALLBACK_ARTWORK;
   }
+    console.log(artwork.image)
 
   const width = artwork.width ? parseFloat(artwork.width) : null;
   const height = artwork.height ? parseFloat(artwork.height) : null;
@@ -94,6 +96,7 @@ function processArtworkData(
 
   // Clean up image URL by removing size suffixes
   if (processed.image) {
+        console.log(processed.image);
     processed.image = processed.image.replace(
       /!(Large|Portrait|Square|PinterestSmall)\.jpg$/g,
       "",
@@ -144,15 +147,13 @@ export async function fetchArtwork(
       .where(eq(artworks.contentId, numericId))
       .limit(1)
       .then((results) => results[0]);
-
-    if (dbArtwork) {
+    if (dbArtwork != undefined && !dbArtwork.image.includes("Large")) {
       log.info("Artwork found in database cache");
       return {
         success: true,
         data: dbArtwork as unknown as ArtworkDetailed,
       };
     }
-
     // Fetch from API if not in DB
     log.info("Artwork not found in cache, fetching from API");
     const apiArtwork = await fetchWikiArtApi<ArtworkDetailed>(
@@ -263,6 +264,14 @@ export async function searchArtworks(
       };
     }
 
+    // Process and save artworks to the database
+    const processResults = await processArtworksToDb(searchResults.data);
+    if (!processResults.success) {
+      log.warn("Failed to process artworks during search", {
+        errors: processResults.errors,
+      });
+    }
+
     // Process image URLs in results
     const processedResults = searchResults.data.map((artwork) => ({
       ...artwork,
@@ -350,6 +359,14 @@ export async function fetchRelatedArtworks(
         error: "No related artworks found",
         data: [],
       };
+    }
+
+    // Process and save related artworks to the database
+    const processResults = await processArtworksToDb(artistArtworks);
+    if (!processResults.success) {
+      log.warn("Failed to process related artworks", {
+        errors: processResults.errors,
+      });
     }
 
     // Filter out the current artwork and limit results
