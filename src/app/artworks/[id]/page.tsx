@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react"; // Import useCallback
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Card } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -20,13 +20,9 @@ import { AddToCollectionButton } from "~/components/collections/add-to-collectio
 import { ArtworkRecommendations } from "~/components/recommendations/artwork-recommendations";
 import ShareDialog from "~/components/common/share-dialog";
 import { Suspense } from "react";
-import { cn } from "~/lib/utils";
-
-// Import react-simple-image-viewer
 import ImageViewer from 'react-simple-image-viewer';
 
 
-// Types
 interface DetailCardProps {
   title: string;
   content: string | null;
@@ -424,9 +420,9 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
                 <Image
                   src={artwork.image}
                   alt={artwork.title || "Artwork"}
-                  width={800} // Adjust as needed for a reasonable default/max display size
-                  height={800} // Adjust as needed
-                  className="object-contain w-full h-auto" // Use object-contain to fit image within container
+                  width={800}
+                  height={800}
+                  className="object-contain w-full h-auto"
                   loading="eager"
                   priority
                   quality={90}
@@ -435,7 +431,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
             </div>
           </Card>
 
-          <ScrollArea className="h-[calc(100vh-12rem)] lg:h-auto"> {/* Adjust height for responsiveness */}
+          <ScrollArea className="h-[calc(100vh-12rem)] lg:h-auto">
             <DetailsContent
               artwork={artwork}
               isFavorite={isFavorite}
@@ -460,10 +456,10 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           src={viewerImages}
           currentIndex={currentImage}
           disableScroll={false}
-          closeOnClickOutside={true} // Optional: Close when clicking outside
-          onClose={closeImageViewer} // Pass the close function
+          closeOnClickOutside={true}
+          onClose={closeImageViewer}
           backgroundStyle={{
-            backgroundColor: "rgba(0,0,0,0.9)" // Customize background
+            backgroundColor: "rgba(0,0,0,0.9)"
           }}
         />
       )}
