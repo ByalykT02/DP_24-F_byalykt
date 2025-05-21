@@ -9,12 +9,14 @@ import { AuthForm } from "~/components/form/auth-form";
 import { Button } from "~/components/ui/button";
 import { useRouter } from "next/navigation";
 import { DEFAULT_LOGIN_REDIRECT } from "routes";
+import { useSession } from "next-auth/react";
 
 const LoginPage = () => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
+  const { update } = useSession();
 
   const fields = [
     {
@@ -42,6 +44,7 @@ const LoginPage = () => {
           setError(result.error);
         } else if (result?.success) {
           setSuccess(result.success);
+          await update();
           router.push(DEFAULT_LOGIN_REDIRECT);
           router.refresh();
         }
