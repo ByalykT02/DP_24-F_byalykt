@@ -1,5 +1,4 @@
-import authConfig from "auth.config";
-import NextAuth from "next-auth";
+import { auth } from "auth";
 import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
@@ -12,8 +11,7 @@ const authRoutesSet = new Set(authRoutes);
 
 const MAX_REDIRECTS = 5;
 
-const { auth } = NextAuth(authConfig);
-
+// Directly use the 'auth' object exported from your nextauth.ts
 export default auth((req) => {
   try {
     const { nextUrl } = req;

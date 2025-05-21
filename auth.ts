@@ -1,11 +1,14 @@
 import NextAuth, { type DefaultSession } from "next-auth";
-import authConfig from "auth.config";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "~/server/db";
-import { JWT } from "next-auth/jwt";
+import { getUserById, getUserByEmail } from "~/server/db/queries/user-queries";
+import { LoginSchema } from "schemas";
+import bcrypt from "bcryptjs";
+
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
-import { getUserById } from "~/server/db/queries/user-queries";
+
+import Credentials from "next-auth/providers/credentials";
 
 declare module "next-auth" {
   interface Session {
@@ -18,6 +21,10 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: "ADMIN" | "USER";
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    picture?: string | null;
   }
 }
 
@@ -47,16 +54,39 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (session.user && (token.role === "ADMIN" || token.role === "USER")) {
         session.user.role = token.role;
       }
+
+      if (token.name) session.user.name = token.name;
+      if (token.email) session.user.email = token.email;
+      if (token.picture) session.user.image = token.picture;
+
       return session;
     },
-    async jwt({ token }) {
-      if (token.sub) {
-        const existingUser = await getUserById(token.sub);
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.sub = user.id;
+        token.id = user.id;
+        token.role = (user as any).role;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+      }
 
-        if (existingUser) {
-          if (existingUser.role === "ADMIN" || existingUser.role === "USER") {
-            token.role = existingUser.role;
+      if (token.sub && !token.role) {
+          const existingUser = await getUserById(token.sub);
+          if (existingUser) {
+              token.role = existingUser.role;
           }
+      }
+
+      if (trigger === "update" && session) {
+        if (session.user.id) {
+            const updatedUser = await getUserById(session.user.id);
+            if (updatedUser) {
+                token.name = updatedUser.name;
+                token.email = updatedUser.email;
+                token.picture = updatedUser.image;
+                token.role = updatedUser.role;
+            }
         }
       }
 
@@ -65,5 +95,31 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   },
   adapter: DrizzleAdapter(db),
   session: { strategy: "jwt" },
-  ...authConfig,
+  providers: [
+    Credentials({
+      async authorize(credentials) {
+        const validatedFields = LoginSchema.safeParse(credentials);
+
+        if (validatedFields.success) {
+          const { email, password } = validatedFields.data;
+          const user = await getUserByEmail(email);
+
+          if (!user || !user.password) return null;
+
+          const passwordsMatch = await bcrypt.compare(password, user.password);
+
+          if (passwordsMatch) {
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              role: user.role,
+            };
+          }
+        }
+        return null;
+      },
+    }),
+  ],
 });
