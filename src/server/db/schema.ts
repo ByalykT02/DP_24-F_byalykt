@@ -45,7 +45,7 @@ export const accounts = createTable(
   {
     userId: varchar("user_id", { length: 255 })
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     type: varchar("type", { length: 255 })
       .$type<AdapterAccount["type"]>()
       .notNull(),
@@ -81,7 +81,7 @@ export const sessions = createTable(
       .primaryKey(),
     userId: varchar("user_id", { length: 255 })
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     expires: timestamp("expires", {
       mode: "date",
       withTimezone: true,
@@ -136,12 +136,11 @@ export const artists = createTable("artist", {
   dictionaries: json("dictionaries"),
 });
 
-// Artworks table
 export const artworks = createTable("artwork", {
   contentId: integer("content_id").primaryKey(),
   artistContentId: integer("artist_content_id")
     .notNull()
-    .references(() => artists.contentId),
+    .references(() => artists.contentId, { onDelete: "cascade" }),
   artistName: varchar("artist_name", { length: 255 }).notNull(),
   artistUrl: varchar("artist_url", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
@@ -169,12 +168,11 @@ export const artworks = createTable("artwork", {
   updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
-// User Preferences and Collections
 export const userPreferences = createTable("user_preferences", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   preferredStyles: json("preferred_styles").$type<string[]>(),
   preferredPeriods: json("preferred_periods").$type<string[]>(),
   newsletterSubscription: boolean("newsletter_subscription").default(false),
@@ -182,24 +180,22 @@ export const userPreferences = createTable("user_preferences", {
   updatedAt: timestamp("updated_at"),
 });
 
-//History
 export const viewingHistory = createTable("viewing_history", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   artworkId: integer("artwork_id")
     .notNull()
-    .references(() => artworks.contentId),
+    .references(() => artworks.contentId, { onDelete: "cascade" }),
   viewedAt: timestamp("viewed_at").defaultNow(),
 });
 
-// User Collections
 export const userCollections = createTable("user_collection", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   isPublic: boolean("is_public").default(false),
@@ -207,27 +203,25 @@ export const userCollections = createTable("user_collection", {
   updatedAt: timestamp("updated_at"),
 });
 
-// Collection Items
 export const collectionItems = createTable("collection_item", {
   id: serial("id").primaryKey(),
   collectionId: integer("collection_id")
     .notNull()
-    .references(() => userCollections.id),
+    .references(() => userCollections.id, { onDelete: "cascade" }),
   artworkId: integer("artwork_id")
     .notNull()
-    .references(() => artworks.contentId),
+    .references(() => artworks.contentId, { onDelete: "cascade" }),
   addedAt: timestamp("added_at").defaultNow(),
 });
 
-// User Interactions
 export const userInteractions = createTable("user_interaction", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   artworkId: integer("artwork_id")
     .notNull()
-    .references(() => artworks.contentId),
+    .references(() => artworks.contentId, { onDelete: "cascade" }),
   rating: integer("rating"),
   comment: text("comment"),
   isFavorite: boolean("is_favorite").default(false),
@@ -235,7 +229,6 @@ export const userInteractions = createTable("user_interaction", {
   updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
-// Relations
 export const artistRelations = relations(artists, ({ many }) => ({
   artworks: many(artworks),
 }));

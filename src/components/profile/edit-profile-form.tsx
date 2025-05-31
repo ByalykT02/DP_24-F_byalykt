@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "~/components/ui/dialog";
-import { updateProfile } from "~/server/actions/update-profile";
+import { updateProfile } from "~/server/actions/auth/update-profile";
 import { toast } from "hooks/use-toast";
 import { User } from "next-auth";
 import { cn } from "~/lib/utils";

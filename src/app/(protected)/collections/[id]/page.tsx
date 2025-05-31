@@ -35,7 +35,7 @@ import {
   deleteCollection,
   removeFromCollection,
   updateCollection,
-} from "~/server/actions/collections";
+} from "~/server/actions/user_features/collections";
 import { EditCollectionDialog } from "~/components/collections/edit-collection-dialog";
 import { CollectionWithDetails } from "~/lib/types/collection";
 import { motion } from "framer-motion";

@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { ChevronLeft, ChevronRight, Frame } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { fetchArtworksFromDB } from "~/server/actions/fetch-artworks";
+import { fetchArtworksFromDB } from "~/server/actions/data_fetching/fetch-artworks";
 import { motion } from "framer-motion";
 
 export default function ArtworksPage() {

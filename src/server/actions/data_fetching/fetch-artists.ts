@@ -1,9 +1,9 @@
 "use server";
 
 import { Artist } from "~/lib/types/artist";
-import { fetchWikiArtApi } from "./fetch-api";
-import { artists } from "../db/schema";
-import { db } from "../db";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
+import { artists } from "~/server/db/schema";
+import { db } from "~/server/db";
 import { sql, desc, asc } from "drizzle-orm";
 import { logger } from "~/utils/logger";
 import { ApiResponse } from "~/lib/types/api";

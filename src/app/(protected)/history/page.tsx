@@ -8,7 +8,7 @@ import { Trash2, Clock, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { getViewingHistory, clearHistory } from "~/server/actions/history";
+import { getViewingHistory, clearHistory } from "~/server/actions/user_features/history";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "hooks/use-toast";
 

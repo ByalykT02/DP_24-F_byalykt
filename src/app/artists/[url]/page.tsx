@@ -20,7 +20,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { fetchArtistDetails } from "~/server/actions/fetch-artist";
+import { fetchArtistDetails } from "~/server/actions/data_fetching/fetch-artist";
 
 interface ArtistPageProps {
   params: {

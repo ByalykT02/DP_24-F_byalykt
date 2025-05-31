@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import { getCategories, type CategoryType } from '~/server/actions/artwork-categories';
+import { getCategories, type CategoryType } from '~/server/actions/user_features/artwork-categories';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Category } from '~/server/actions/artwork-categories';
+import { Category } from '~/server/actions/user_features/artwork-categories';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Filter, Palette, Layers, Clock, ArrowRight, Search } from 'lucide-react';
 import { Skeleton } from '~/components/ui/skeleton';

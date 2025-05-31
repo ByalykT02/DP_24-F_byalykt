@@ -17,9 +17,9 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
 import { Users, Palette, Image, Heart, Star, Eye } from "lucide-react";
 
-import UserRegistrationsChart from "~/app/components/admin/charts/UserRegistrationsChart";
-import ArtworkViewsChart from "~/app/components/admin/charts/ArtworkViewsChart";
-import RoleDistributionChart from "~/app/components/admin/charts/RoleDistributionChart";
+import UserRegistrationsChart from "~/components/admin/charts/UserRegistrationsChart"
+import ArtworkViewsChart from "~/components/admin/charts/ArtworkViewsChart";
+import RoleDistributionChart from "~/components/admin/charts/RoleDistributionChart";
 
 interface StatCardProps {
   title: string;

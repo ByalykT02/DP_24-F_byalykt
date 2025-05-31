@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "~/utils/logger";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { ApiResponse } from "~/lib/types/api";
-import { fetchArtistDetails } from "./fetch-artist";
+import { fetchArtistDetails } from "../data_fetching/fetch-artist";
 
 /**
  * Checks if the artist data is valid

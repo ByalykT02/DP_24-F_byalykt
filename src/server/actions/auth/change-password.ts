@@ -5,7 +5,6 @@ import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { getUserById } from "~/server/db/queries/user-queries";
-import { useCurrentUser } from "hooks/use-current-user";
 import { getCurrentUser } from "~/lib/auth";
 
 interface ChangePasswordParams {

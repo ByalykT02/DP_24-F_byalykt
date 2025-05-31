@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import {
   getUserCollections,
   addToCollection,
-} from "~/server/actions/collections";
+} from "~/server/actions/user_features/collections";
 import { CollectionWithDetails } from "~/lib/types/collection";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { toast } from "hooks/use-toast";

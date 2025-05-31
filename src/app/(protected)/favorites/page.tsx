@@ -8,7 +8,7 @@ import { Heart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { clearFavorites, getFavorites } from "~/server/actions/favorites";
+import { clearFavorites, getFavorites } from "~/server/actions/user_features/favorites";
 import { UserFavorite, UserFavorites } from "~/lib/types/favorite";
 
 export default function FavoritesPage() {

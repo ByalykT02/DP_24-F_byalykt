@@ -5,7 +5,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import Image from "next/image";
 import Link from "next/link";
-import { getRecommendations } from "~/server/actions/recommendations";
+import { getRecommendations } from "~/server/actions/user_features/recommendations";
 import type { ArtworkRecommendation } from "~/lib/types/artwork";
 
 interface ArtworkRecommendationsProps {

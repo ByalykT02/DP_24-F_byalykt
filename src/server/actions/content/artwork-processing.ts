@@ -1,7 +1,7 @@
 "use server";
 
-import { fetchArtwork } from "./fetch-artwork";
-import { upsertArtwork } from "./artwork-to-db";
+import { fetchArtwork } from "../data_fetching/fetch-artwork";
+import { upsertArtwork } from "~/server/actions/content/artwork-to-db";
 import type { Artwork } from "~/lib/types/artwork";
 
 export async function processArtworksToDb(artworks: Artwork[]) {

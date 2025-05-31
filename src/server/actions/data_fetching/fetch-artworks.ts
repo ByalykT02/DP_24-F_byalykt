@@ -1,10 +1,10 @@
 "use server";
 
 import { Artwork } from "~/lib/types/artwork";
-import { db } from "../db";
-import { artworks } from "../db/schema";
+import { db } from "~/server/db";
+import { artworks } from "~/server/db/schema";
 import { asc, desc, sql } from "drizzle-orm";
-import { fetchWikiArtApi } from "./fetch-api";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
 
 /**
  * Fallback artwork data in case of API or database failures

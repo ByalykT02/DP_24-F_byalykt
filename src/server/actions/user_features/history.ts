@@ -3,7 +3,7 @@
 import { desc, eq, and, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { viewingHistory, artworks, artists } from "~/server/db/schema";
-import { upsertArtwork } from "./artwork-to-db";
+import { upsertArtwork } from "~/server/actions/content/artwork-to-db";
 import { ArtworkDetailed } from "~/lib/types/artwork";
 import { logger } from "~/utils/logger";
 

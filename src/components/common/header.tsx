@@ -7,7 +7,6 @@ import { Button } from "../ui/button";
 import { LoginRouteButton } from "./login-route-button";
 import { UserMenu } from "./user-menu";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { SearchPopover } from "../search/search-commands";
 import {
   Sheet,
@@ -19,8 +18,8 @@ import {
 } from "~/components/ui/sheet"; // Import Sheet components
 
 export default function Header() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session, status  } = useSession();
+  const userRole = session?.user.role;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -55,6 +54,12 @@ export default function Header() {
           >
             About
           </Link>
+
+          {userRole === "ADMIN" && (
+            <Link href="/admin" className="text-sm font-medium hover:text-primary">
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-4">

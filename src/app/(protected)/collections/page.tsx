@@ -25,7 +25,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { CreateCollectionDialog } from "~/components/collections/create-collection-dialog";
-import { getUserCollections } from "~/server/actions/collections";
+import { getUserCollections } from "~/server/actions/user_features/collections";
 import { CollectionWithDetails } from "~/lib/types/collection";
 import { Input } from "~/components/ui/input";
 import { Toggle } from "~/components/ui/toggle";

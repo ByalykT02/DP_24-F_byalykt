@@ -24,7 +24,7 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
-import { updateCollection } from "~/server/actions/collections";
+import { updateCollection } from "~/server/actions/user_features/collections";
 
 const formSchema = z.object({
   name: z.string().min(1, "Collection name is required"),

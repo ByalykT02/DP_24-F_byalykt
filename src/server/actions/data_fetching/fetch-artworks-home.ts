@@ -2,7 +2,7 @@
 
 import { Artist } from "~/lib/types/artist";
 import { Artwork } from "~/lib/types/artwork";
-import { fetchWikiArtApi } from "./fetch-api";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
 
 /**
  * Maximum number of artworks to return in a single request

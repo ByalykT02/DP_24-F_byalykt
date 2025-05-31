@@ -7,7 +7,7 @@ import {
   getArtworksByCategory,
   type CategoryType,
   type CategoryFilters
-} from '~/server/actions/artwork-categories';
+} from '~/server/actions/user_features/artwork-categories';
 import type { Artwork } from '~/lib/types/artwork';
 import SortingOptions from '~/app/components/SortingOptions';
 

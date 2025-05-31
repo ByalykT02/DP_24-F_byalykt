@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { RefreshCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { fetchPopularArtists } from "~/server/actions/fetch-artists";
+import { fetchPopularArtists } from "~/server/actions/data_fetching/fetch-artists";
 
 export default function ArtistsPage() {
   const [artists, setArtists] = useState<Artist[]>([]);

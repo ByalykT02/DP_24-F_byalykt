@@ -4,7 +4,7 @@ import { Artwork } from "~/lib/types/artwork";
 import { Loading } from "~/components/ui/loading";
 import Hero from "~/components/home/hero";
 import ArtworkTiles from "~/components/home/arwork-tiles";
-import { fetchArtworks } from "~/server/actions/fetch-artworks-home";
+import { fetchArtworks } from "~/server/actions/data_fetching/fetch-artworks-home";
 import useSWR from "swr";
 
 const MainPage = () => {

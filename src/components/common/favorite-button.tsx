@@ -2,7 +2,7 @@
 import { useCallback, useState } from "react";
 import { Heart } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { toggleFavorite } from "~/server/actions/favorites";
+import { toggleFavorite } from "~/server/actions/user_features/favorites";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "hooks/use-current-user";
 import { Alert, AlertDescription } from "~/components/ui/alert";

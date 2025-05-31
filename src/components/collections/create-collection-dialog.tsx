@@ -24,7 +24,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
-import { createCollection } from "~/server/actions/collections";
+import { createCollection } from "~/server/actions/user_features/collections";
 import { Switch } from "../ui/switch";
 
 const formSchema = z.object({

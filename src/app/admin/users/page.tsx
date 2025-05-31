@@ -1,4 +1,4 @@
-import UserTable from "~/app/components/admin/UserTable";
+import UserTable from "~/components/admin/users/UserTable";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getAllUsersForManagement } from "~/server/data/users";
 

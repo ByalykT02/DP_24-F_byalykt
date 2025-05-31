@@ -3,7 +3,7 @@
 import { ArtistDetailed } from "~/lib/types/artist";
 import { Artwork, ArtworkDetailed } from "~/lib/types/artwork";
 import { logger } from "~/utils/logger";
-import { fetchWikiArtApi } from "./fetch-api";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
 
 // Fallback data
 const FALLBACK_ARTIST: ArtistDetailed = {

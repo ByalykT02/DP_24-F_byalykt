@@ -1,6 +1,6 @@
 "use server";
 import { WikiArtSearchResult } from "~/lib/types/artwork";
-import { fetchWikiArtApi } from "./fetch-api";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api"
 
 export interface SearchResults {
   artworks: {

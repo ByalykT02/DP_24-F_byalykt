@@ -3,11 +3,11 @@
 import { ApiResponse } from "~/lib/types/api";
 import { Artwork, ArtworkDetailed } from "~/lib/types/artwork";
 import { logger } from "~/utils/logger";
-import { fetchWikiArtApi } from "./fetch-api";
+import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
 import { db } from "~/server/db";
 import { artworks } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
-import { processArtworksToDb } from "./process-artworks";
+import { processArtworksToDb } from "~/server/actions/content/artwork-processing";
 
 // Fallback artwork data
 const FALLBACK_ARTWORK: ArtworkDetailed = {

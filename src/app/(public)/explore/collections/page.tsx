@@ -6,7 +6,7 @@ import { Loading } from "~/components/ui/loading";
 import { FolderPlus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { getPublicCollections } from "~/server/actions/collections";
+import { getPublicCollections } from "~/server/actions/user_features/collections";
 
 export default function ExploreCollectionsPage() {
   const [collections, setCollections] = useState<any[]>([]);
