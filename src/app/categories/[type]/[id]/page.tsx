@@ -2,39 +2,39 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { 
-  getCategories, 
+import {
+  getCategories,
   getArtworksByCategory,
   type CategoryType,
   type CategoryFilters
 } from '~/server/actions/user_features/artwork-categories';
 import type { Artwork } from '~/lib/types/artwork';
-import SortingOptions from '~/app/components/SortingOptions';
+import SortingOptions from '~/components/SortingOptions';
 
 // Pagination controls
-function Pagination({ 
-  currentPage, 
-  totalPages, 
-  baseUrl 
-}: { 
-  currentPage: number; 
-  totalPages: number; 
+function Pagination({
+  currentPage,
+  totalPages,
+  baseUrl
+}: {
+  currentPage: number;
+  totalPages: number;
   baseUrl: string;
 }) {
   const pages = [];
   const maxPages = 5;
-  
+
   let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
   let endPage = Math.min(totalPages, startPage + maxPages - 1);
-  
+
   if (endPage - startPage + 1 < maxPages) {
     startPage = Math.max(1, endPage - maxPages + 1);
   }
-  
+
   for (let i = startPage; i <= endPage; i++) {
     pages.push(i);
   }
-  
+
   return (
     <div className="flex items-center justify-center space-x-2 mt-8">
       {currentPage > 1 && (
@@ -45,7 +45,7 @@ function Pagination({
           &laquo; Prev
         </Link>
       )}
-      
+
       {startPage > 1 && (
         <Link
           href={`${baseUrl}?page=1`}
@@ -54,11 +54,11 @@ function Pagination({
           1
         </Link>
       )}
-      
+
       {startPage > 2 && (
         <span className="px-3 py-1">...</span>
       )}
-      
+
       {pages.map((page) => (
         <Link
           key={page}
@@ -72,11 +72,11 @@ function Pagination({
           {page}
         </Link>
       ))}
-      
+
       {endPage < totalPages - 1 && (
         <span className="px-3 py-1">...</span>
       )}
-      
+
       {endPage < totalPages && (
         <Link
           href={`${baseUrl}?page=${totalPages}`}
@@ -85,7 +85,7 @@ function Pagination({
           {totalPages}
         </Link>
       )}
-      
+
       {currentPage < totalPages && (
         <Link
           href={`${baseUrl}?page=${currentPage + 1}`}
@@ -101,8 +101,8 @@ function Pagination({
 // Artwork grid item
 function ArtworkItem({ artwork }: { artwork: Artwork }) {
   return (
-    <Link 
-      href={`/artworks/${artwork.contentId}`} 
+    <Link
+      href={`/artworks/${artwork.contentId}`}
       className="group block"
     >
       <div className="relative aspect-[3/4] overflow-hidden rounded-lg shadow-md transition-all duration-300 group-hover:shadow-lg">
@@ -157,7 +157,7 @@ function ErrorState({ error }: { error: string }) {
 
 // Helper function to convert category ID to a display name
 function getDisplayNameFromId(id: string): string {
-  return id.split('-').map(word => 
+  return id.split('-').map(word =>
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
 }
@@ -171,7 +171,7 @@ function getCategoryTypeLabel(type: CategoryType): string {
     'technique': 'Technique',
     'tag': 'Tag',
   };
-  
+
   return labels[type] || 'Category';
 }
 
@@ -191,29 +191,29 @@ async function CategoryArtworksContent({
 }) {
   // First, get all categories of this type to find a match
   const categoriesResponse = await getCategories(type, 500);
-  
+
   if (!categoriesResponse.success) {
     return <ErrorState error={categoriesResponse.error || `Failed to load ${type} categories`} />;
   }
-  
+
   // Find the exact category that matches our ID
   const exactCategory = categoriesResponse.data?.find(cat => cat.id === id);
-  
+
   // If we can't find the exact match, try a fuzzy match
-  const fuzzyCategory = !exactCategory 
+  const fuzzyCategory = !exactCategory
     ? categoriesResponse.data?.find(cat => {
         const catId = cat.name.toLowerCase().replace(/\s+/g, '-');
         return catId === id || id.includes(catId) || catId.includes(id);
       })
     : null;
-  
+
   // For display in the UI
   const displayName = getDisplayNameFromId(id);
-  
+
   // Items per page
   const perPage = 24;
   const offset = (page - 1) * perPage;
-  
+
   // Build the filters based on which category we found
   const filters: CategoryFilters = {
     limit: perPage,
@@ -221,11 +221,11 @@ async function CategoryArtworksContent({
     sortBy: (sort === 'year' || sort === 'title') ? sort : 'year',
     sortOrder: (order === 'asc' || order === 'desc') ? order : 'desc'
   };
-  
+
   if (exactCategory) {
     // If we found an exact match, use its name
     const categoryName = exactCategory.name;
-    
+
     switch (type) {
       case 'genre':
         filters.genres = [categoryName];
@@ -246,7 +246,7 @@ async function CategoryArtworksContent({
   } else if (fuzzyCategory) {
     // If we found a fuzzy match, use its name
     const categoryName = fuzzyCategory.name;
-    
+
     switch (type) {
       case 'genre':
         filters.genres = [categoryName];
@@ -267,7 +267,7 @@ async function CategoryArtworksContent({
   } else {
     // If we couldn't find a match, try with the display name and variations
     const categoryName = displayName;
-    
+
     switch (type) {
       case 'genre':
         filters.genres = [
@@ -310,18 +310,18 @@ async function CategoryArtworksContent({
         break;
     }
   }
-  
+
   // Fetch artworks with our filters
   const response = await getArtworksByCategory(filters);
-  
+
   if (!response.success) {
     return <ErrorState error={response.error || "Failed to load artworks"} />;
   }
-  
+
   const { artworks, total } = response.data!;
   const totalPages = Math.ceil(total / perPage);
   const baseUrl = `/categories/${type}/${id}`;
-  
+
   // If no artworks found
   if (artworks.length === 0 && page === 1) {
     return (
@@ -329,14 +329,14 @@ async function CategoryArtworksContent({
         <h3 className="text-lg text-gray-600">No artworks found</h3>
         <p className="mt-2 text-gray-500">We couldn't find any artworks in this category.</p>
         <p className="mt-2 text-sm text-gray-500">
-          {exactCategory 
+          {exactCategory
             ? `We searched for exact match "${exactCategory.name}"`
             : fuzzyCategory
               ? `We tried with similar match "${fuzzyCategory.name}"`
               : `We tried with variations of "${displayName}"`}
         </p>
-        <Link 
-          href="/categories" 
+        <Link
+          href="/categories"
           className="mt-4 inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           Browse other categories
@@ -344,7 +344,7 @@ async function CategoryArtworksContent({
       </div>
     );
   }
-  
+
   // If requested page is beyond available pages
   if (page > totalPages && totalPages > 0) {
     return (
@@ -353,7 +353,7 @@ async function CategoryArtworksContent({
         <p className="mt-2 text-gray-500">
           This category only has {totalPages} page{totalPages !== 1 ? 's' : ''}.
         </p>
-        <Link 
+        <Link
           href={`${baseUrl}?page=1`}
           className="mt-4 inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
@@ -371,40 +371,40 @@ async function CategoryArtworksContent({
             Showing {offset + 1}-{Math.min(offset + perPage, total)} of {total} artworks
           </p>
         </div>
-        
-        <SortingOptions 
-          currentSort={sort} 
-          currentOrder={order} 
-          baseUrl={baseUrl} 
+
+        <SortingOptions
+          currentSort={sort}
+          currentOrder={order}
+          baseUrl={baseUrl}
         />
       </div>
-      
+
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
         {artworks.map((artwork) => (
           <ArtworkItem key={artwork.contentId} artwork={artwork} />
         ))}
       </div>
-      
+
       {totalPages > 1 && (
-        <Pagination 
-          currentPage={page} 
-          totalPages={totalPages} 
-          baseUrl={baseUrl} 
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          baseUrl={baseUrl}
         />
       )}
     </div>
   );
 }
 
-export default function CategoryArtworksPage({ 
+export default function CategoryArtworksPage({
   params,
   searchParams
-}: { 
-  params: { 
+}: {
+  params: {
     type: string;
     id: string;
   };
-  searchParams: { 
+  searchParams: {
     page?: string;
     sort?: string;
     order?: string;
@@ -415,17 +415,17 @@ export default function CategoryArtworksPage({
   const page = Number(searchParams.page) || 1;
   const sort = searchParams.sort || 'year';
   const order = searchParams.order || 'desc';
-  
+
   // Validate category type
   const isValidType = ['genre', 'style', 'period', 'technique', 'tag'].includes(type);
-  
+
   if (!isValidType) {
     return notFound();
   }
-  
+
   const displayName = getDisplayNameFromId(id);
   const typeLabel = getCategoryTypeLabel(type as CategoryType);
-  
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -440,20 +440,20 @@ export default function CategoryArtworksPage({
           <span className="mx-2">&gt;</span>
           <span className="text-gray-700">{displayName}</span>
         </div>
-        
+
         <h1 className="text-2xl sm:text-3xl font-bold">
           {displayName} <span className="text-gray-500">({typeLabel})</span>
         </h1>
-        
+
         <p className="mt-2 text-gray-600">
           Browse artworks categorized as {typeLabel.toLowerCase()} "{displayName}".
         </p>
       </div>
-      
+
       <Suspense fallback={<LoadingState />}>
-        <CategoryArtworksContent 
-          type={type as CategoryType} 
-          id={id} 
+        <CategoryArtworksContent
+          type={type as CategoryType}
+          id={id}
           page={page}
           sort={sort}
           order={order}
