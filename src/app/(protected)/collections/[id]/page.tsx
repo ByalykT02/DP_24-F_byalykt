@@ -42,7 +42,7 @@ import { motion } from "framer-motion";
 import { Input } from "~/components/ui/input";
 import ActionDialog from "~/components/common/action-dialog";
 import ShareDialog from "~/components/common/share-dialog";
-import { toast } from "hooks/use-toast";
+import { toast } from "src/hooks/use-toast";
 
 interface CollectionPageProps {
   params: {

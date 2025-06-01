@@ -22,7 +22,7 @@ import {
   DialogDescription,
 } from "~/components/ui/dialog";
 import { updateProfile } from "~/server/actions/auth/update-profile";
-import { toast } from "hooks/use-toast";
+import { toast } from "src/hooks/use-toast";
 import { User } from "next-auth";
 import { cn } from "~/lib/utils";
 

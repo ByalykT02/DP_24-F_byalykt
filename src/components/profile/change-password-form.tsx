@@ -15,7 +15,7 @@ import {
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { toast } from "hooks/use-toast";
+import { toast } from "src/hooks/use-toast";
 import { changePassword } from "~/server/actions/auth/change-password";
 
 const ChangePasswordSchema = z

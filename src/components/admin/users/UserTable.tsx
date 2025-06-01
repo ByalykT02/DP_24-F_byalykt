@@ -14,7 +14,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { UserForManagement } from "~/lib/types/user";
 import { deleteUser, updateUserRole } from "~/server/actions/user-management";
-import { useToast } from 'hooks/use-toast';
+import { useToast } from 'src/hooks/use-toast';
 import ActionDialog from '~/components/common/action-dialog';
 import EditRoleDialog from "./EditRoleDialog";
 

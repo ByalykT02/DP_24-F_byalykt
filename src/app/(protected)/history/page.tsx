@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getViewingHistory, clearHistory } from "~/server/actions/user_features/history";
 import { formatDistanceToNow } from "date-fns";
-import { toast } from "hooks/use-toast";
+import { toast } from "src/hooks/use-toast";
 
 export default function HistoryPage() {
   const { data: session } = useSession();

@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { toggleFavorite } from "~/server/actions/user_features/favorites";
 import { useRouter } from "next/navigation";
-import { useCurrentUser } from "hooks/use-current-user";
+import { useCurrentUser } from "src/hooks/use-current-user";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 
 interface FavoriteButtonProps {

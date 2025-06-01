@@ -17,7 +17,7 @@ import {
 } from "~/server/actions/user_features/collections";
 import { CollectionWithDetails } from "~/lib/types/collection";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { toast } from "hooks/use-toast";
+import { toast } from "src/hooks/use-toast";
 
 interface AddToCollectionButtonProps {
   artworkId: number;

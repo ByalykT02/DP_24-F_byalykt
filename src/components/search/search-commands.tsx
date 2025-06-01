@@ -11,7 +11,7 @@ import { Button } from "~/components/ui/button";
 import { Search as SearchIcon } from "lucide-react";
 import { search, SearchResults } from "~/server/actions/user_features/search";
 import Image from "next/image";
-import { useDebounce } from "hooks/use-debounce";
+import { useDebounce } from "src/hooks/use-debounce";
 import { useCallback, useEffect, useState } from "react";
 
 export function SearchPopover() {
