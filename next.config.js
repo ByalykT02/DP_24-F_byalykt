@@ -13,7 +13,7 @@ const config = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: false,
 
     remotePatterns: [
       {

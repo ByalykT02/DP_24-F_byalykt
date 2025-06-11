@@ -4,7 +4,7 @@ import { Artist } from "~/lib/types/artist";
 import { Loading } from "~/components/ui/loading";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { RefreshCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCcw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { fetchPopularArtists } from "~/server/actions/data_fetching/fetch-artists";
@@ -12,74 +12,121 @@ import { fetchPopularArtists } from "~/server/actions/data_fetching/fetch-artist
 export default function ArtistsPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  
+  const [hasMore, setHasMore] = useState(true);
+
   const loadingRef = useRef(false);
-  
-  const loadArtists = useCallback(async (page: number = 1) => {
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreElementRef = useRef<HTMLDivElement | null>(null);
+
+  const loadArtists = useCallback(async (page: number = 1, append: boolean = false) => {
     if (loadingRef.current) return;
-    
+
     try {
-      setIsLoading(true);
+      if (!append) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
       loadingRef.current = true;
       setError(null);
-      
-      const { artists: data, totalPages: pages, currentPage } = await fetchPopularArtists(page);
-      
-      setArtists(data);
+
+      const { artists: data, totalPages, currentPage } = await fetchPopularArtists(page);
+
+      if (append) {
+        setArtists(prev => [...prev, ...data]);
+      } else {
+        setArtists(data);
+      }
+
       setCurrentPage(currentPage);
-      setTotalPages(pages);
+      setHasMore(currentPage < totalPages);
     } catch (error) {
       console.error("Error loading artists:", error);
       setError("Failed to load artists. Please try again.");
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
       loadingRef.current = false;
     }
   }, []);
-  
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore && !loadingRef.current) {
+      void loadArtists(currentPage + 1, true);
+    }
+  }, [hasMore, isLoadingMore, currentPage, loadArtists]);
+
+  const refresh = useCallback(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+    void loadArtists(1, false);
+  }, [loadArtists]);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreElementRef.current) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target?.isIntersecting && hasMore && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '100px',
+      }
+    );
+
+    observerRef.current.observe(loadMoreElementRef.current);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasMore, isLoadingMore, loadMore]);
+
+  // Initial load
   useEffect(() => {
     void loadArtists();
   }, [loadArtists]);
-  
-  const handlePageChange = (newPage: number) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      void loadArtists(newPage);
-    }
-  };
-  
-  if (error) {
+
+  if (error && artists.length === 0) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
         <div className="text-center">
           <p className="mb-4 text-red-600">{error}</p>
-          <Button onClick={() => void loadArtists()}>Try Again</Button>
+          <Button onClick={refresh}>Try Again</Button>
         </div>
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8">
       {isLoading && <Loading />}
-      
+
       <div className="container mx-auto px-4">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Popular Artists</h1>
-          {/* <Button
-            onClick={() => void loadArtists()}
+          <Button
+            onClick={refresh}
             variant="outline"
             className="gap-2"
             disabled={isLoading}
           >
             <RefreshCcw className="h-4 w-4" />
             Refresh
-          </Button> */}
+          </Button>
         </div>
-        
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => (
             <Link
               key={artist.contentId}
@@ -102,7 +149,7 @@ export default function ArtistsPage() {
                     {artist.birthDayAsString} - {artist.deathDayAsString}
                   </p>
                   {artist.wikipediaUrl && (
-                    <a 
+                    <a
                       href={artist.wikipediaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -117,31 +164,42 @@ export default function ArtistsPage() {
             </Link>
           ))}
         </div>
-        
-        {/* Pagination Controls */}
-        <div className="flex justify-center items-center space-x-4">
-          <Button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1 || isLoading}
-            variant="outline"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Previous
-          </Button>
-          
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
-          
-          <Button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || isLoading}
-            variant="outline"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+
+        {/* Loading More Indicator */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-8">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+              <span>Loading more artists...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Intersection Observer Target */}
+        <div
+          ref={loadMoreElementRef}
+          className="h-10 w-full"
+          style={{ minHeight: '1px' }}
+        />
+
+        {/* End of Results Indicator */}
+        {!hasMore && artists.length > 0 && (
+          <div className="flex justify-center py-8">
+            <p className="text-muted-foreground">You've reached the end of the list</p>
+          </div>
+        )}
+
+        {/* Error Message for Load More */}
+        {error && artists.length > 0 && (
+          <div className="flex justify-center py-4">
+            <div className="text-center">
+              <p className="mb-2 text-red-600 text-sm">{error}</p>
+              <Button onClick={loadMore} variant="outline" size="sm">
+                Try Loading More
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -43,6 +43,8 @@ export async function fetchPopularArtists(
   artists: Artist[];
   totalPages: number;
   currentPage: number;
+  hasMore: boolean;
+  total: number;
 }> {
   const log = logger.child({
     action: "fetchPopularArtists",
@@ -54,8 +56,8 @@ export async function fetchPopularArtists(
     // Validate pagination parameters
     page = Math.max(1, page);
     pageSize = Math.min(100, Math.max(1, pageSize));
-    
-    log.info("Fetching popular artists", { page, pageSize });
+
+    log.info("Fetching popular artists for infinite scroll", { page, pageSize });
 
     // Combine count and data fetch into a single transaction for consistency
     const result = await db.transaction(async (tx) => {
@@ -67,11 +69,17 @@ export async function fetchPopularArtists(
       const totalArtists = Number(totalCount?.count || 0);
       const totalPages = Math.ceil(totalArtists / pageSize);
 
-      // Use original simple sorting by createdAt
+      // Use original simple sorting by createdAt for consistent ordering
       const paginatedArtists = await tx
         .select()
         .from(artists)
-        .orderBy(artists.createdAt)
+        .orderBy(
+          sql`CASE
+          WHEN ${artists.story} IS NOT NULL AND TRIM(${artists.story}) != '' THEN 0
+          ELSE 1
+        END`,
+          artists.createdAt
+        )
         .limit(pageSize)
         .offset((page - 1) * pageSize);
 
@@ -85,27 +93,35 @@ export async function fetchPopularArtists(
       };
     });
 
-    log.info("Successfully fetched artists", { 
+    const hasMore = page < result.totalPages;
+
+    log.info("Successfully fetched artists for infinite scroll", {
       artistCount: result.artists.length,
       totalArtists: result.totalArtists,
-      totalPages: result.totalPages
+      totalPages: result.totalPages,
+      hasMore,
+      currentPage: page
     });
 
     return {
       artists: result.artists,
       totalPages: result.totalPages,
       currentPage: page,
+      hasMore,
+      total: result.totalArtists,
     };
   } catch (error) {
-    log.error("Failed to fetch popular artists", {
+    log.error("Failed to fetch popular artists for infinite scroll", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     return {
       artists: FALLBACK_ARTISTS,
       totalPages: 1,
       currentPage: 1,
+      hasMore: false,
+      total: FALLBACK_ARTISTS.length,
     };
   }
 }
@@ -127,7 +143,7 @@ export async function searchArtists(
 
   try {
     log.info("Searching for artists", { query });
-    
+
     // First try to find artists in database
     const dbArtists = await db
       .select()
@@ -152,7 +168,7 @@ export async function searchArtists(
     if (apiResults?.data && apiResults.data.length > 0) {
       const processedResults = apiResults.data.map(processArtist);
       log.info("Found artists via API", { count: processedResults.length });
-      
+
       return {
         success: true,
         data: processedResults,
@@ -170,7 +186,7 @@ export async function searchArtists(
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     return {
       success: false,
       error: "Failed to search artists",
@@ -184,13 +200,13 @@ export async function searchArtists(
  */
 export async function refreshArtistDatabase(): Promise<ApiResponse<{ count: number }>> {
   const log = logger.child({ action: "refreshArtistDatabase" });
-  
+
   try {
     log.info("Starting artist database refresh");
-    
+
     // Fetch trending artists from WikiArt
     const apiArtists = await fetchWikiArtApi<Artist[]>("/en/App/Artists/Trending?json=2");
-    
+
     if (!apiArtists || !Array.isArray(apiArtists) || apiArtists.length === 0) {
       log.warn("No artists returned from API");
       return {
@@ -198,43 +214,43 @@ export async function refreshArtistDatabase(): Promise<ApiResponse<{ count: numb
         error: "No artists returned from API",
       };
     }
-    
+
     log.info(`Retrieved ${apiArtists.length} trending artists from API`);
-    
+
     // Process each artist and insert to DB
     const insertedCount = await db.transaction(async (tx) => {
       let count = 0;
-      
+
       for (const artist of apiArtists) {
         if (!artist.contentId || !artist.artistName) continue;
-        
+
         // Process the artist data
         const processedArtist = processArtist(artist);
-        
+
         // Insert artist using onConflictDoUpdate for efficiency
         await tx
-          .insert(artists)
-          .values({
+        .insert(artists)
+        .values({
+          ...processedArtist,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [artists.contentId],
+          set: {
             ...processedArtist,
-            createdAt: new Date(),
             updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [artists.contentId],
-            set: {
-              ...processedArtist,
-              updatedAt: new Date(),
-            },
-          });
-        
+          },
+        });
+
         count++;
       }
-      
+
       return count;
     });
-    
+
     log.info("Artist database refresh completed", { insertedCount });
-    
+
     return {
       success: true,
       data: { count: insertedCount },
@@ -244,7 +260,7 @@ export async function refreshArtistDatabase(): Promise<ApiResponse<{ count: numb
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     return {
       success: false,
       error: "Failed to refresh artist database",

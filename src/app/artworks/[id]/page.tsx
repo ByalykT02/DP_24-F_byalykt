@@ -451,6 +451,7 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
 
       {/* react-simple-image-viewer component */}
       {/* Only render if viewerImages has content and isViewerOpen is true */}
+
       {isViewerOpen && viewerImages.length > 0 && (
         <ImageViewer
           src={viewerImages}
@@ -459,7 +460,8 @@ export default function ArtworkPage({ params }: ArtworkPageProps) {
           closeOnClickOutside={true}
           onClose={closeImageViewer}
           backgroundStyle={{
-            backgroundColor: "rgba(0,0,0,0.9)"
+            backgroundColor: "rgba(0,0,0,0.9)",
+            zIndex: 200
           }}
         />
       )}

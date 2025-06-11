@@ -2,8 +2,8 @@ import { Artwork } from "~/lib/types/artwork";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { ArrowRight, Search } from "lucide-react";
-import { db } from "~/server/db";
+import { ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface HeroProps {
   artworks: Artwork[];
@@ -12,6 +12,7 @@ interface HeroProps {
 export default function Hero({ artworks }: HeroProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [heroImagesLoaded, setHeroImagesLoaded] = useState(0);
+  const router = useRouter();
 
   const handleHeroImageLoad = useCallback(() => {
     setHeroImagesLoaded((prev) => prev + 1);
@@ -62,13 +63,9 @@ export default function Hero({ artworks }: HeroProps) {
               Explore our curated collection of masterpieces
             </p>
             <div className="flex gap-4">
-              <Button size="lg">
+              <Button onClick={() => router.push("/artworks")} variant="outline" size="lg">
                 Browse Gallery
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="lg">
-                <Search className="mr-2 h-4 w-4" />
-                Search Art
               </Button>
             </div>
           </div>

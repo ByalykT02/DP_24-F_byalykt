@@ -68,7 +68,7 @@ export async function fetchRandomArtworks(
     const paginatedArtworks = artworks
       .slice(startIndex, startIndex + pageSize)
       .map(processArtwork);
-      
+
     return {
       artworks: paginatedArtworks,
       totalPages,
@@ -89,8 +89,18 @@ export async function fetchRandomArtworks(
 export async function fetchArtworksFromDB(
   page: number = 1,
   pageSize: number = 15,
-): Promise<PaginatedArtworkResult> {
+): Promise<{
+  artworks: Artwork[];
+  totalPages: number;
+  currentPage: number;
+  hasMore: boolean;
+  total: number;
+}> {
   try {
+    // Validate pagination parameters
+    page = Math.max(1, page);
+    pageSize = Math.min(100, Math.max(1, pageSize));
+
     // Get total count for pagination
     const totalCountResult = await db
       .select({ count: sql<number>`count(*)` })
@@ -120,14 +130,24 @@ export async function fetchArtworksFromDB(
       image: artwork.image,
     })).map(processArtwork);
 
+    const hasMore = page < totalPages;
+
     return {
       artworks: processedArtworks,
       totalPages,
       currentPage: page,
+      hasMore,
+      total: totalCount,
     };
   } catch (error) {
-    console.error("Error fetching artworks from database:", error);
-    return { artworks: FALLBACK_ARTWORKS, totalPages: 1, currentPage: 1 };
+    console.error("Error fetching artworks for infinite scroll:", error);
+    return {
+      artworks: FALLBACK_ARTWORKS,
+      totalPages: 1,
+      currentPage: 1,
+      hasMore: false,
+      total: FALLBACK_ARTWORKS.length,
+    };
   }
 }
 
@@ -165,33 +185,33 @@ export async function fetchArtworksFromDBWithSorting(
       .from(artworks)
       .limit(pageSize)
       .offset((page - 1) * pageSize);
-      
+
     // Apply sorting based on parameters
     switch (sortBy) {
       case 'title':
-        query = sortOrder === 'asc' 
-          ? query.orderBy(asc(artworks.title)) 
+        query = sortOrder === 'asc'
+          ? query.orderBy(asc(artworks.title))
           : query.orderBy(desc(artworks.title));
         break;
       case 'artistName':
-        query = sortOrder === 'asc' 
-          ? query.orderBy(asc(artworks.artistName)) 
+        query = sortOrder === 'asc'
+          ? query.orderBy(asc(artworks.artistName))
           : query.orderBy(desc(artworks.artistName));
         break;
       case 'completitionYear':
-        query = sortOrder === 'asc' 
-          ? query.orderBy(asc(artworks.completitionYear)) 
+        query = sortOrder === 'asc'
+          ? query.orderBy(asc(artworks.completitionYear))
           : query.orderBy(desc(artworks.completitionYear));
         break;
       case 'createdAt':
-        query = sortOrder === 'asc' 
-          ? query.orderBy(asc(artworks.createdAt)) 
+        query = sortOrder === 'asc'
+          ? query.orderBy(asc(artworks.createdAt))
           : query.orderBy(desc(artworks.createdAt));
         break;
       case 'updatedAt':
       default:
-        query = sortOrder === 'asc' 
-          ? query.orderBy(asc(artworks.updatedAt)) 
+        query = sortOrder === 'asc'
+          ? query.orderBy(asc(artworks.updatedAt))
           : query.orderBy(desc(artworks.updatedAt));
         break;
     }

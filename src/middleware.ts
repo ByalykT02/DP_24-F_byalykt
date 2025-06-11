@@ -11,7 +11,7 @@ const authRoutesSet = new Set(authRoutes);
 
 const MAX_REDIRECTS = 5;
 
-// Directly use the 'auth' object exported from your nextauth.ts
+// Directly use the 'auth' object exported from nextauth.ts
 export default auth((req) => {
   try {
     const { nextUrl } = req;
