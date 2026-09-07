@@ -9,6 +9,7 @@ import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 
 import Credentials from "next-auth/providers/credentials";
+import authConfig from "./auth.config";
 
 declare module "next-auth" {
   interface Session {
@@ -29,10 +30,7 @@ declare module "next-auth/jwt" {
 }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
+  ...authConfig,
   events: {
     async linkAccount({ user }) {
       if (user.id) {
