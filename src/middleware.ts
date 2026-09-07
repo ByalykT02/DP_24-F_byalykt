@@ -5,7 +5,7 @@ import {
   apiAuthPrefix,
   authRoutes,
   publicRoutes,
-} from "routes";
+} from "../routes";
 
 const compiledPublicRoutes = publicRoutes.map(route => new RegExp(route));
 const authRoutesSet = new Set(authRoutes);
