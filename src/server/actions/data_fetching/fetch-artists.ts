@@ -7,8 +7,8 @@ import { db } from "~/server/db";
 import { sql, desc, asc } from "drizzle-orm";
 import { logger } from "~/utils/logger";
 import { ApiResponse } from "~/lib/types/api";
+import { processArtist, normalizeArtistPagination } from "~/lib/data/artist-utils";
 
-// Fallback data
 const FALLBACK_ARTISTS: Artist[] = [
   {
     contentId: 227598,
@@ -22,29 +22,6 @@ const FALLBACK_ARTISTS: Artist[] = [
     dictonaries: [318, 7741],
   },
 ];
-
-/**
- * Process artist data to clean up WikiArt `!Portrait.jpg` image suffix.
- */
-export function processArtist(artist: Artist): Artist {
-  return {
-    ...artist,
-    image: artist.image?.replace("!Portrait.jpg", "") || "",
-  };
-}
-
-/**
- * Clamp pagination inputs: page >= 1, 1 <= pageSize <= 100.
- */
-export function normalizeArtistPagination(
-  page: number,
-  pageSize: number,
-): { page: number; pageSize: number } {
-  return {
-    page: Math.max(1, Math.floor(page) || 1),
-    pageSize: Math.min(100, Math.max(1, Math.floor(pageSize) || 15)),
-  };
-}
 
 /**
  * Fetch popular artists with pagination support

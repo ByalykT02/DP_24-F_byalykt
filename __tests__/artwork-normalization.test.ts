@@ -11,7 +11,7 @@ import {
   FALLBACK_ARTWORK,
   processArtworkData,
   WIKIART_IMAGE_SIZE_SUFFIX_PATTERN,
-} from "~/server/actions/data_fetching/fetch-artwork";
+} from "~/lib/data/artwork-utils";
 
 // Pure normalization tests must not open a Postgres connection.
 jest.mock("~/server/db", () => ({ db: {} }));

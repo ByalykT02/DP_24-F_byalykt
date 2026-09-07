@@ -9,8 +9,8 @@ import {
   isValidArtist,
   isValidArtwork,
 } from "~/server/actions/content/artwork-to-db-utils";
-import { normalizeArtistPagination } from "~/server/actions/data_fetching/fetch-artists";
-import { FALLBACK_ARTWORK } from "~/server/actions/data_fetching/fetch-artwork";
+import { normalizeArtistPagination } from "~/lib/data/artist-utils";
+import { FALLBACK_ARTWORK } from "~/lib/data/artwork-utils";
 
 // Validator tests must not open a Postgres connection.
 jest.mock("~/server/db", () => ({ db: {} }));

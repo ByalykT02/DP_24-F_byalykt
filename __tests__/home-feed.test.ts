@@ -10,8 +10,8 @@ import {
   MAX_ARTWORKS,
   processHomeArtwork,
   shuffleArray,
-} from "~/server/actions/data_fetching/fetch-artworks-home";
-import { processArtist } from "~/server/actions/data_fetching/fetch-artists";
+} from "~/lib/data/home-feed-utils";
+import { processArtist } from "~/lib/data/artist-utils";
 import type { Artwork } from "~/lib/types/artwork";
 
 // Feed tests cover pure helpers only; do not open a Postgres connection.

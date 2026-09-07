@@ -8,55 +8,20 @@ import type {
   ReferenceArtwork,
 } from "~/lib/types/artwork";
 import { logger } from "~/utils/logger";
+import {
+  calculateDictionarySimilarity,
+  calculateSimilarityScore,
+  calculateTagSimilarity,
+  calculateTimeDistance,
+  processArtwork,
+  toDictionaryIds,
+} from "~/lib/data/recommendation-utils";
 
 export interface RecommendationParams {
   artistId: number;
   limit?: number;
   includeTimeRange?: boolean;
   diversityFactor?: number;
-}
-
-interface ScorableArtwork {
-  image?: string | null;
-  style?: string | null;
-  genre?: string | null;
-  period?: string | null;
-  technique?: string | null;
-  tags?: string | null;
-  // Drizzle `json` columns type as `unknown` on reads.
-  dictionaries?: unknown;
-  completitionYear?: number | null;
-  artist?: { contentId?: number | null } | null;
-}
-
-/** Weighted factors for the Jaccard + time-decay similarity score. */
-export const RECOMMENDATION_WEIGHTS = {
-  sameArtist: 1.5,
-  style: 2.5,
-  genre: 2.0,
-  period: 1.5,
-  technique: 1.5,
-  tags: 3.0,
-  dictionaries: 2.5,
-  time: 1.0,
-} as const;
-
-export function processArtwork<T extends { image?: string | null }>(artwork: T): T {
-  return {
-    ...artwork,
-    image: artwork.image?.replace("!Large.jpg", "") ?? artwork.image,
-  };
-}
-
-/** Linear decay over a 100-year window: 1.0 for same year, 0.0 beyond 100 years. */
-export function calculateTimeDistance(
-  yearA?: number | null,
-  yearB?: number | null,
-): number {
-  if (!yearA || !yearB) return 0;
-
-  const distance = Math.abs(yearA - yearB);
-  return Math.max(0, 1 - distance / 100);
 }
 
 async function getArtworkDetails(artistId: number) {
@@ -78,92 +43,6 @@ async function getArtworkDetails(artistId: number) {
     .then((results) => results[0] || null);
 
   return referenceArtwork;
-}
-
-export function calculateTagSimilarity(
-  tagsA: string | null | undefined,
-  tagsB: string | null | undefined,
-): number {
-  if (!tagsA || !tagsB) return 0;
-
-  const setA = new Set(tagsA.split(",").map((t) => t.trim()).filter(Boolean));
-  const setB = new Set(tagsB.split(",").map((t) => t.trim()).filter(Boolean));
-
-  if (setA.size === 0 || setB.size === 0) return 0;
-  const tagIntersection = new Set([...setA].filter((x) => setB.has(x)));
-  const tagUnion = new Set([...setA, ...setB]);
-
-  return tagUnion.size === 0 ? 0 : tagIntersection.size / tagUnion.size;
-}
-
-export function calculateDictionarySimilarity(
-  dictA: number[] | null | undefined,
-  dictB: number[] | null | undefined,
-): number {
-  if (!dictA || !dictB) return 0;
-
-  const setA = new Set(dictA);
-  const setB = new Set(dictB);
-
-  const intersection = new Set([...setA].filter((x) => setB.has(x)));
-  const union = new Set([...setA, ...setB]);
-
-  return union.size === 0 ? 0 : intersection.size / union.size;
-}
-
-/**
- * Weighted Jaccard + time-decay similarity between a candidate artwork and
- * the reference artwork. Exported for unit testing the ranking operation.
- */
-export function calculateSimilarityScore(
-  artwork: ScorableArtwork,
-  reference: ScorableArtwork,
-  artistId: number,
-  diversityFactor: number,
-): number {
-  const weights = RECOMMENDATION_WEIGHTS;
-
-  const metrics = {
-    sameArtist: artwork.artist?.contentId === artistId ? 1 : 0,
-    style: artwork.style === reference.style ? 1 : 0,
-    genre: artwork.genre === reference.genre ? 1 : 0,
-    period: artwork.period === reference.period ? 1 : 0,
-    technique: artwork.technique === reference.technique ? 1 : 0,
-    tags: calculateTagSimilarity(artwork.tags, reference.tags),
-    dictionaries: calculateDictionarySimilarity(
-      Array.isArray(artwork.dictionaries)
-        ? (artwork.dictionaries as number[])
-        : null,
-      Array.isArray(reference.dictionaries)
-        ? (reference.dictionaries as number[])
-        : null,
-    ),
-    time: calculateTimeDistance(
-      artwork.completitionYear,
-      reference.completitionYear,
-    ),
-  };
-
-  let score = Object.entries(metrics).reduce((sum, [key, value]) => {
-    return sum + value * weights[key as keyof typeof weights];
-  }, 0);
-
-  if (diversityFactor > 0) {
-    // Reduce the weight of same-artist bonus to encourage diversity
-    score = score * (1 - metrics.sameArtist * diversityFactor);
-  }
-
-  return score;
-}
-
-/**
- * Coerces a Drizzle `json` dictionaries column value to `number[] | null`.
- * Non-numeric entries are dropped so downstream Jaccard math stays numeric.
- */
-export function toDictionaryIds(value: unknown): number[] | null {
-  if (!Array.isArray(value)) return null;
-  const ids = value.filter((v): v is number => typeof v === "number");
-  return ids.length === value.length ? ids : ids;
 }
 
 export async function getRecommendations({

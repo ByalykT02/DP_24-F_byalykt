@@ -12,7 +12,7 @@ import {
   processArtwork,
   RECOMMENDATION_WEIGHTS,
   toDictionaryIds,
-} from "~/server/actions/user_features/recommendations";
+} from "~/lib/data/recommendation-utils";
 
 // Ranking is pure math; do not open a Postgres connection in unit tests.
 jest.mock("~/server/db", () => ({ db: {} }));
