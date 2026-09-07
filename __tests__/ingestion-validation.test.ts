@@ -8,7 +8,7 @@ import {
   ARTIST_STALENESS_DAYS,
   isValidArtist,
   isValidArtwork,
-} from "~/server/actions/content/artwork-to-db";
+} from "~/server/actions/content/artwork-to-db-utils";
 import { normalizeArtistPagination } from "~/server/actions/data_fetching/fetch-artists";
 import { FALLBACK_ARTWORK } from "~/server/actions/data_fetching/fetch-artwork";
 

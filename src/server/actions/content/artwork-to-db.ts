@@ -4,48 +4,15 @@ import { db } from "~/server/db";
 import { artworks, artists } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "~/utils/logger";
-import { ArtworkDetailed } from "~/lib/types/artwork";
+import type { ArtworkDetailed } from "~/lib/types/artwork";
 import { ArtistDetailed } from "~/lib/types/artist";
 import { ApiResponse } from "~/lib/types/api";
 import { fetchArtistDetails } from "../data_fetching/fetch-artist";
-
-/**
- * Checks if the artist data is valid
- */
-export function isValidArtist(data: {
-  contentId: number;
-  artistName: string;
-  artistUrl: string | null;
-}): boolean {
-  return (
-    !!data.contentId &&
-    data.contentId > 0 &&
-    !!data.artistName &&
-    data.artistName.trim().length > 0
-  );
-}
-
-/**
- * Checks if the artwork data is valid
- */
-export function isValidArtwork(data: ArtworkDetailed): boolean {
-  return (
-    !!data.contentId && 
-    data.contentId > 0 && 
-    !!data.artistContentId && 
-    data.artistContentId > 0 && 
-    !!data.title && 
-    data.title.trim().length > 0 && 
-    !!data.image && 
-    data.image.trim().length > 0
-  );
-}
-
-/**
- * Fetches artist data with intelligent caching logic
- * Only fetches if the artist doesn't exist or data is stale (older than 30 days)
- */
-export const ARTIST_STALENESS_DAYS = 30;
+import {
+  ARTIST_STALENESS_DAYS,
+  isValidArtist,
+  isValidArtwork,
+} from "./artwork-to-db-utils";
 
 export async function getArtistData(
   contentId: number,
