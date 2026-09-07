@@ -24,12 +24,25 @@ const FALLBACK_ARTISTS: Artist[] = [
 ];
 
 /**
- * Process artist data to clean up image URLs
+ * Process artist data to clean up WikiArt `!Portrait.jpg` image suffix.
  */
-function processArtist(artist: Artist): Artist {
+export function processArtist(artist: Artist): Artist {
   return {
     ...artist,
     image: artist.image?.replace("!Portrait.jpg", "") || "",
+  };
+}
+
+/**
+ * Clamp pagination inputs: page >= 1, 1 <= pageSize <= 100.
+ */
+export function normalizeArtistPagination(
+  page: number,
+  pageSize: number,
+): { page: number; pageSize: number } {
+  return {
+    page: Math.max(1, Math.floor(page) || 1),
+    pageSize: Math.min(100, Math.max(1, Math.floor(pageSize) || 15)),
   };
 }
 
@@ -54,8 +67,9 @@ export async function fetchPopularArtists(
 
   try {
     // Validate pagination parameters
-    page = Math.max(1, page);
-    pageSize = Math.min(100, Math.max(1, pageSize));
+    const normalized = normalizeArtistPagination(page, pageSize);
+    page = normalized.page;
+    pageSize = normalized.pageSize;
 
     log.info("Fetching popular artists for infinite scroll", { page, pageSize });
 

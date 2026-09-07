@@ -18,7 +18,7 @@ const config = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "uploads*.wikiart.org",
+        hostname: "*.wikiart.org",
         port: "",
         pathname: "/**",
       },

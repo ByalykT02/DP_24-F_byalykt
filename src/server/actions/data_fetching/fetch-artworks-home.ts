@@ -3,16 +3,17 @@
 import { Artist } from "~/lib/types/artist";
 import { Artwork } from "~/lib/types/artwork";
 import { fetchWikiArtApi } from "~/server/actions/data_fetching/fetch-api";
+import { logger } from "~/utils/logger";
 
 /**
  * Maximum number of artworks to return in a single request
  */
-const MAX_ARTWORKS = 9;
+export const MAX_ARTWORKS = 9;
 
 /**
  * Fallback data to use when API calls fail
  */
-const FALLBACK_DATA = {
+export const FALLBACK_DATA = {
   artist: {
     contentId: 227598,
     artistName: "Alphonse Mucha",
@@ -42,16 +43,21 @@ const FALLBACK_DATA = {
 };
 
 /**
- * Shuffles an array using Fisher-Yates algorithm with random sorting
+ * Shuffles an array using the Fisher-Yates algorithm.
  * @template T - The type of elements in the array
  * @param {T[]} array - Array to be shuffled
  * @returns {T[]} A new shuffled array
  */
-function shuffleArray<T>(array: T[]): T[] {
-  return array
-    .map((value) => ({ value, sort: Math.random() }))
-    .sort((a, b) => a.sort - b.sort)
-    .map(({ value }) => value);
+export function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = shuffled[i] as T;
+    const target = shuffled[j] as T;
+    shuffled[i] = target;
+    shuffled[j] = current;
+  }
+  return shuffled;
 }
 
 /**
@@ -59,29 +65,35 @@ function shuffleArray<T>(array: T[]): T[] {
  * @returns {Promise<Artist>} Promise resolving to an Artist object
  */
 async function getRandomArtist(): Promise<Artist> {
+  const log = logger.child({ action: "getRandomArtist" });
   try {
     const artists = await fetchWikiArtApi<Artist[]>(
       "/app/api/popularartists?json=1",
     );
 
     if (!artists || artists.length === 0) {
-      console.warn("No artists returned from API, using fallback data");
+      log.warn("No artists returned from API, using fallback data");
       return FALLBACK_DATA.artist;
     }
 
     const randomIndex = Math.floor(Math.random() * artists.length);
     const selectedArtist = artists[randomIndex];
-    
+
     // Verify that we have a valid artist object
     if (!selectedArtist) {
-      console.warn("Selected artist is undefined, using fallback data");
+      log.warn("Selected artist is undefined, using fallback data");
       return FALLBACK_DATA.artist;
     }
 
-    console.log(`Successfully fetched artist: ${selectedArtist.artistName} (${selectedArtist.url})`);
+    log.info("Successfully fetched artist", {
+      artistName: selectedArtist.artistName,
+      url: selectedArtist.url,
+    });
     return selectedArtist;
   } catch (error) {
-    console.error("Error fetching random artist:", error instanceof Error ? error.message : String(error));
+    log.error("Error fetching random artist", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return FALLBACK_DATA.artist;
   }
 }
@@ -91,7 +103,7 @@ async function getRandomArtist(): Promise<Artist> {
  * @param {Artwork} artwork - Artwork object to process
  * @returns {Artwork} Processed artwork with normalized image URL
  */
-function processArtwork(artwork: Artwork): Artwork {
+export function processHomeArtwork(artwork: Artwork): Artwork {
   return {
     ...artwork,
     image: artwork.image.replace("!Large.jpg", ""),
@@ -103,6 +115,7 @@ function processArtwork(artwork: Artwork): Artwork {
  * @returns {Promise<Artwork[]>} Promise resolving to an array of Artwork objects
  */
 export async function fetchArtworks(): Promise<Artwork[]> {
+  const log = logger.child({ action: "fetchArtworks" });
   try {
     const artist = await getRandomArtist();
 
@@ -111,20 +124,27 @@ export async function fetchArtworks(): Promise<Artwork[]> {
     );
 
     if (!artworks || artworks.length === 0) {
-      console.warn(`No artworks found for artist ${artist.artistName}, using fallback data`);
+      log.warn("No artworks found for artist, using fallback data", {
+        artistName: artist.artistName,
+      });
       return FALLBACK_DATA.artworks;
     }
 
     // Ensure we have a diverse selection by shuffling and limit to maximum count
     const processedArtworks = shuffleArray(artworks)
       .slice(0, MAX_ARTWORKS)
-      .map(processArtwork);
+      .map(processHomeArtwork);
 
-    console.log(`Successfully fetched ${processedArtworks.length} artworks by ${artist.artistName}`);
+    log.info("Successfully fetched artworks", {
+      count: processedArtworks.length,
+      artistName: artist.artistName,
+    });
 
     return processedArtworks;
   } catch (error) {
-    console.error("Error fetching artworks collection:", error instanceof Error ? error.message : String(error));
+    log.error("Error fetching artworks collection", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return FALLBACK_DATA.artworks;
   }
 }
@@ -139,26 +159,35 @@ export async function fetchArtworksByArtist(
   artistUrl: string,
   limit: number = MAX_ARTWORKS
 ): Promise<Artwork[]> {
+  const log = logger.child({ action: "fetchArtworksByArtist", artistUrl });
   try {
     const artworks = await fetchWikiArtApi<Artwork[]>(
       `/App/Painting/PaintingsByArtist?artistUrl=${artistUrl}&json=2`,
     );
 
     if (!artworks || artworks.length === 0) {
-      console.warn(`No artworks found for artist URL ${artistUrl}, using fallback data`);
+      log.warn("No artworks found for artist URL, using fallback data", {
+        artistUrl,
+      });
       return FALLBACK_DATA.artworks;
     }
 
     // Process and limit the number of returned artworks
     const processedArtworks = artworks
       .slice(0, limit)
-      .map(processArtwork);
+      .map(processHomeArtwork);
 
-    console.log(`Successfully fetched ${processedArtworks.length} artworks for artist URL ${artistUrl}`);
+    log.info("Successfully fetched artworks for artist", {
+      count: processedArtworks.length,
+      artistUrl,
+    });
 
     return processedArtworks;
   } catch (error) {
-    console.error(`Error fetching artworks for artist ${artistUrl}:`, error instanceof Error ? error.message : String(error));
+    log.error("Error fetching artworks for artist", {
+      artistUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return FALLBACK_DATA.artworks;
   }
 }
@@ -169,6 +198,7 @@ export async function fetchArtworksByArtist(
  * @returns {Promise<Artwork[]>} Promise resolving to an array of featured Artwork objects
  */
 export async function fetchFeaturedArtworks(count: number = MAX_ARTWORKS): Promise<Artwork[]> {
+  const log = logger.child({ action: "fetchFeaturedArtworks" });
   try {
     // Fetch from most popular paintings
     const artworks = await fetchWikiArtApi<Artwork[]>(
@@ -176,20 +206,24 @@ export async function fetchFeaturedArtworks(count: number = MAX_ARTWORKS): Promi
     );
 
     if (!artworks || artworks.length === 0) {
-      console.warn("No popular artworks found, using fallback data");
+      log.warn("No popular artworks found, using fallback data");
       return FALLBACK_DATA.artworks;
     }
 
     // Process, shuffle for variety, and limit the number of returned artworks
     const processedArtworks = shuffleArray(artworks)
       .slice(0, count)
-      .map(processArtwork);
+      .map(processHomeArtwork);
 
-    console.log(`Successfully fetched ${processedArtworks.length} featured artworks`);
+    log.info("Successfully fetched featured artworks", {
+      count: processedArtworks.length,
+    });
 
     return processedArtworks;
   } catch (error) {
-    console.error("Error fetching featured artworks:", error instanceof Error ? error.message : String(error));
+    log.error("Error fetching featured artworks", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return FALLBACK_DATA.artworks;
   }
 }

@@ -2,23 +2,33 @@
 
 import { fetchArtwork } from "../data_fetching/fetch-artwork";
 import { upsertArtwork } from "~/server/actions/content/artwork-to-db";
+import { logger } from "~/utils/logger";
 import type { Artwork } from "~/lib/types/artwork";
 
 export async function processArtworksToDb(artworks: Artwork[]) {
+  const log = logger.child({ action: "processArtworksToDb" });
   try {
     const results = await Promise.allSettled(
       artworks.map(async (artwork) => {
         try {
           const artworkData = await fetchArtwork(String(artwork.contentId));
 
-          const processedArtwork = await upsertArtwork(artworkData.data!);
+          if (!artworkData.success || !artworkData.data) {
+            throw new Error(
+              artworkData.error ?? `Missing artwork data for ${artwork.contentId}`,
+            );
+          }
+
+          const processedArtwork = await upsertArtwork(artworkData.data);
 
           return processedArtwork;
         } catch (individualError) {
-          console.error(
-            `Error processing artwork ${artwork.contentId}:`,
-            individualError,
-          );
+          log.warn(`Error processing artwork ${artwork.contentId}`, {
+            error:
+              individualError instanceof Error
+                ? individualError.message
+                : String(individualError),
+          });
           throw individualError; // Rethrow to ensure it's counted as rejected
         }
       }),
@@ -31,8 +41,11 @@ export async function processArtworksToDb(artworks: Artwork[]) {
       (result) => result.status === "rejected",
     );
 
-    console.log("Successful Results:", successfulResults.length);
-    console.log("Failed Results:", failedResults.length);
+    log.info("Artwork ingestion batch completed", {
+      successful: successfulResults.length,
+      failed: failedResults.length,
+      total: artworks.length,
+    });
 
     return {
       success: true,
@@ -43,7 +56,9 @@ export async function processArtworksToDb(artworks: Artwork[]) {
         .filter(Boolean),
     };
   } catch (error) {
-    console.error("Error processing artworks:", error);
+    log.error("Error processing artworks", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
       error: "Failed to process artworks",

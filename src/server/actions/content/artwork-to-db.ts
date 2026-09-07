@@ -5,21 +5,22 @@ import { artworks, artists } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "~/utils/logger";
 import { ArtworkDetailed } from "~/lib/types/artwork";
+import { ArtistDetailed } from "~/lib/types/artist";
 import { ApiResponse } from "~/lib/types/api";
 import { fetchArtistDetails } from "../data_fetching/fetch-artist";
 
 /**
  * Checks if the artist data is valid
  */
-function isValidArtist(data: {
+export function isValidArtist(data: {
   contentId: number;
   artistName: string;
   artistUrl: string | null;
 }): boolean {
   return (
-    !!data.contentId && 
-    data.contentId > 0 && 
-    !!data.artistName && 
+    !!data.contentId &&
+    data.contentId > 0 &&
+    !!data.artistName &&
     data.artistName.trim().length > 0
   );
 }
@@ -27,7 +28,7 @@ function isValidArtist(data: {
 /**
  * Checks if the artwork data is valid
  */
-function isValidArtwork(data: ArtworkDetailed): boolean {
+export function isValidArtwork(data: ArtworkDetailed): boolean {
   return (
     !!data.contentId && 
     data.contentId > 0 && 
@@ -42,9 +43,14 @@ function isValidArtwork(data: ArtworkDetailed): boolean {
 
 /**
  * Fetches artist data with intelligent caching logic
- * Only fetches if the artist doesn't exist or data is stale
+ * Only fetches if the artist doesn't exist or data is stale (older than 30 days)
  */
-async function getArtistData(contentId: number, url: string | null): Promise<any> {
+export const ARTIST_STALENESS_DAYS = 30;
+
+export async function getArtistData(
+  contentId: number,
+  url: string | null,
+): Promise<ArtistDetailed | null> {
   // Skip fetching if URL is missing
   if (!url) return null;
   
@@ -54,12 +60,12 @@ async function getArtistData(contentId: number, url: string | null): Promise<any
       where: eq(artists.contentId, contentId),
     });
     
-    // If artist exists and was updated recently (within last 30 days), skip API call
+    // If artist exists and was updated recently (within staleness window), skip API call
     if (existingArtist?.updatedAt) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      if (new Date(existingArtist.updatedAt) > thirtyDaysAgo) {
+      const stalenessCutoff = new Date();
+      stalenessCutoff.setDate(stalenessCutoff.getDate() - ARTIST_STALENESS_DAYS);
+
+      if (new Date(existingArtist.updatedAt) > stalenessCutoff) {
         return null; // Use existing data
       }
     }
@@ -105,18 +111,18 @@ async function upsertArtist(
     const artistData = await getArtistData(artistContentId, artistUrl);
     
     if (artistData) {
-      // If we have fresh data, use it for upsert
+      // If we have fresh data, use it for upsert. The `url` column is
+      // non-nullable, so fall back to "" (same as minimal records below).
+      const artistValues = {
+        ...artistData,
+        url: artistData.url ?? "",
+        updatedAt: new Date(),
+      };
       await db.insert(artists)
-        .values({
-          ...artistData,
-          updatedAt: new Date(),
-        })
+        .values(artistValues)
         .onConflictDoUpdate({
           target: [artists.contentId],
-          set: {
-            ...artistData,
-            updatedAt: new Date(),
-          }
+          set: artistValues,
         });
       
       log.info("Artist updated with fresh data", { artistContentId });

@@ -65,7 +65,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (user) {
         token.sub = user.id;
         token.id = user.id;
-        token.role = (user as any).role;
+        token.role =
+          "role" in user && (user.role === "ADMIN" || user.role === "USER")
+            ? user.role
+            : undefined;
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;

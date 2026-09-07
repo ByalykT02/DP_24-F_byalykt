@@ -3,7 +3,7 @@ import path from 'path';
 
 type LogLevels = 'error' | 'warn' | 'info' | 'http' | 'debug';
 interface MetaData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Define log levels
@@ -105,11 +105,12 @@ export const logging = {
   child: (context: MetaData) => logger.child(context),
 };
 
-// Handle unhandled rejections and exceptions conditionally
+// Handle unhandled rejections and exceptions conditionally.
+// Never terminate the process here: in dev this would kill `next dev`,
+// in production the orchestrator (Docker/Vercel) owns restarts.
 if (typeof process !== 'undefined') {
-  process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  process.on('unhandledRejection', (reason: unknown) => {
     logger.error('Unhandled Rejection at:', {
-      promise,
       reason: reason instanceof Error ? reason.message : reason,
     });
   });
@@ -120,9 +121,5 @@ if (typeof process !== 'undefined') {
       message: error.message,
       stack: error.stack,
     });
-
-    if (process.env.NODE_ENV !== 'production') {
-      process.exit(1);
-    }
   });
 }

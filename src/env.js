@@ -11,7 +11,14 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    NEXTAUTH_URL: z.string().optional()
+    NEXTAUTH_URL: z.string().optional(),
+    NEXTAUTH_SECRET: z.string().optional(),
+    AUTH_SECRET: z.string().optional(),
+    // WikiArt API credentials (Vercel pull uses *_KEY names; older docs used *_CODE).
+    WIKIART_ACCESS_KEY: z.string().optional(),
+    WIKIART_SECRET_KEY: z.string().optional(),
+    WIKIART_ACCESS_CODE: z.string().optional(),
+    WIKIART_SECRET_CODE: z.string().optional(),
   },
 
   /**
@@ -30,7 +37,13 @@ export const env = createEnv({
   runtimeEnv: {
     POSTGRES_URL: process.env.POSTGRES_URL,
     NODE_ENV: process.env.NODE_ENV,
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    AUTH_SECRET: process.env.AUTH_SECRET,
+    WIKIART_ACCESS_KEY: process.env.WIKIART_ACCESS_KEY,
+    WIKIART_SECRET_KEY: process.env.WIKIART_SECRET_KEY,
+    WIKIART_ACCESS_CODE: process.env.WIKIART_ACCESS_CODE,
+    WIKIART_SECRET_CODE: process.env.WIKIART_SECRET_CODE,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

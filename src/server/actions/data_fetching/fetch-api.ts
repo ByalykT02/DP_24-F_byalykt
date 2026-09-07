@@ -1,5 +1,42 @@
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+interface CacheEntry {
+  data: unknown;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+export const WIKIART_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes per-endpoint cache
+/** Backwards-compatible alias. */
+export const CACHE_TTL = WIKIART_CACHE_TTL_MS;
+/** Upper bound so the in-memory Map cannot grow without limit. */
+export const WIKIART_CACHE_MAX_ENTRIES = 200;
+
+export function clearWikiArtCache(): void {
+  cache.clear();
+}
+
+export function getWikiArtCacheSize(): number {
+  return cache.size;
+}
+
+export function isWikiArtCacheFresh(timestamp: number, now = Date.now()): boolean {
+  return now - timestamp < WIKIART_CACHE_TTL_MS;
+}
+
+function setWikiArtCache(key: string, data: unknown, now: number): void {
+  // Evict the oldest entry (Map preserves insertion order) when full.
+  if (!cache.has(key) && cache.size >= WIKIART_CACHE_MAX_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, { data, timestamp: now });
+}
+
+export function buildWikiArtUrl(endpoint: string): string {
+  const normalized = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return new URL(`https://www.wikiart.org/en${normalized}`).toString();
+}
 
 export async function fetchWikiArtApi<T>(endpoint: string): Promise<T> {
   const controller = new AbortController();
@@ -10,18 +47,18 @@ export async function fetchWikiArtApi<T>(endpoint: string): Promise<T> {
     const now = Date.now();
     const cachedItem = cache.get(cacheKey);
 
-    if (cachedItem && now - cachedItem.timestamp < CACHE_TTL) {
+    if (cachedItem && isWikiArtCacheFresh(cachedItem.timestamp, now)) {
       return cachedItem.data as T;
     }
 
-    const url = new URL(`https://www.wikiart.org/en${endpoint}`);
+    const url = buildWikiArtUrl(endpoint);
 
     const headers: HeadersInit = {
       Accept: "application/json",
       "User-Agent": "Mozilla/5.0 (compatible; ArtGalleryBot/1.0)",
     };
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       signal: controller.signal,
       headers,
     });
@@ -30,14 +67,11 @@ export async function fetchWikiArtApi<T>(endpoint: string): Promise<T> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as T;
 
-    cache.set(cacheKey, {
-      data,
-      timestamp: now,
-    });
+    setWikiArtCache(cacheKey, data, now);
 
-    return data as T;
+    return data;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Request timeout for ${endpoint}`);

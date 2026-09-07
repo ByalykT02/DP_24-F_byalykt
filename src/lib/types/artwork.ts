@@ -22,7 +22,9 @@ export interface ArtworkDetailed {
   genre: string | null;
   style: string | null;
   tags: string | null;
-  dictionaries: any | null;
+  dictionaries: number[] | null;
+  // WikiArt ImageJson dimensions arrive as strings; the `decimal` DB columns
+  // also read back as strings. See coerceArtworkDimension().
   width: string | null;
   height: string | null;
   material: string | null;

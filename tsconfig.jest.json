@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "checkJs": false
+  },
+  "include": ["__tests__/**/*.ts", "src/**/*.ts", "schemas/**/*.ts", "auth.ts", "routes.ts"]
+}

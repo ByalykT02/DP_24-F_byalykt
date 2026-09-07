@@ -9,7 +9,8 @@ import {
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Search as SearchIcon } from "lucide-react";
-import { search, SearchResults } from "~/server/actions/user_features/search";
+import { search } from "~/server/actions/user_features/search";
+import type { SearchResults } from "~/server/actions/user_features/search-utils";
 import Image from "next/image";
 import { useDebounce } from "src/hooks/use-debounce";
 import { useCallback, useEffect, useState } from "react";

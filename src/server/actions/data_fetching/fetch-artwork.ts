@@ -9,8 +9,8 @@ import { artworks } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { processArtworksToDb } from "~/server/actions/content/artwork-processing";
 
-// Fallback artwork data
-const FALLBACK_ARTWORK: ArtworkDetailed = {
+// Fallback artwork data (Alphonse Mucha, "Holy Mount Athos", 1926)
+export const FALLBACK_ARTWORK: ArtworkDetailed = {
   artistUrl: "alphonse-mucha",
   url: "holy-mount-athos-1926",
   dictionaries: [482, 494],
@@ -41,19 +41,45 @@ const FALLBACK_ARTWORK: ArtworkDetailed = {
   updatedAt: new Date(),
 };
 
+/** Size suffixes appended by WikiArt image URLs (e.g. `painting.jpg!Large.jpg`). */
+export const WIKIART_IMAGE_SIZE_SUFFIX_PATTERN =
+  /!(Large|Portrait|Square|PinterestSmall)\.jpg$/g;
+
+/** Strips WikiArt size suffixes (`!Large.jpg`, …) from an image URL. */
+export function cleanWikiArtImageUrl(image: string): string {
+  return image.replace(WIKIART_IMAGE_SIZE_SUFFIX_PATTERN, "");
+}
+
+/** Strips Wiki `[markup]` brackets from a WikiArt description. */
+export function cleanWikiArtDescription(description: string): string {
+  return description.replace(/\[.*?\]/g, "").trim();
+}
+
 /**
- * Process and normalize artwork data
+ * Coerces a WikiArt dimension (string like `"1983"` or number `1983`) to the
+ * string form stored in the `decimal` artwork columns. Returns null for
+ * missing/non-numeric input.
  */
-function processArtworkData(
+export function coerceArtworkDimension(
+  value: string | number | null | undefined,
+): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const num = typeof value === "number" ? value : parseFloat(value);
+  return Number.isNaN(num) ? null : String(num);
+}
+
+/**
+ * Process and normalize raw WikiArt `Painting/ImageJson` payloads.
+ */
+export function processArtworkData(
   artwork: Partial<ArtworkDetailed>,
 ): ArtworkDetailed {
   if (!artwork || typeof artwork !== "object") {
     return FALLBACK_ARTWORK;
   }
-    console.log(artwork.image)
 
-  const width = artwork.width ? parseFloat(artwork.width) : null;
-  const height = artwork.height ? parseFloat(artwork.height) : null;
+  const width = coerceArtworkDimension(artwork.width);
+  const height = coerceArtworkDimension(artwork.height);
 
   // Start with a new object to avoid mutations
   const processed: ArtworkDetailed = {
@@ -96,18 +122,12 @@ function processArtworkData(
 
   // Clean up image URL by removing size suffixes
   if (processed.image) {
-        console.log(processed.image);
-    processed.image = processed.image.replace(
-      /!(Large|Portrait|Square|PinterestSmall)\.jpg$/g,
-      "",
-    );
+    processed.image = cleanWikiArtImageUrl(processed.image);
   }
 
   // Clean up description by removing Wiki markup
   if (processed.description) {
-    processed.description = processed.description
-      .replace(/\[.*?\]/g, "")
-      .trim();
+    processed.description = cleanWikiArtDescription(processed.description);
   }
 
   return processed;
@@ -275,11 +295,7 @@ export async function searchArtworks(
     // Process image URLs in results
     const processedResults = searchResults.data.map((artwork) => ({
       ...artwork,
-      image:
-        artwork.image?.replace(
-          /!(Large|Portrait|Square|PinterestSmall)\.jpg$/g,
-          "",
-        ) || "",
+      image: artwork.image ? cleanWikiArtImageUrl(artwork.image) : "",
     }));
 
     log.info("Artworks search completed", {
@@ -374,11 +390,7 @@ export async function fetchRelatedArtworks(
       .filter((artwork) => artwork.contentId !== numericId)
       .map((artwork) => ({
         ...artwork,
-        image:
-          artwork.image?.replace(
-            /!(Large|Portrait|Square|PinterestSmall)\.jpg$/g,
-            "",
-          ) || "",
+        image: artwork.image ? cleanWikiArtImageUrl(artwork.image) : "",
       }))
       .slice(0, limit);
 
